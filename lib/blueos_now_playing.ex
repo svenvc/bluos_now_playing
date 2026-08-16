@@ -23,18 +23,60 @@ defmodule BlueOSNowPlaying do
     response.body |> parse_status()
   end
 
+  def get_sync_status(host, port \\ @default_port) when is_tuple(host) do
+    hostname = host |> Tuple.to_list() |> Enum.map(&to_string(&1)) |> Enum.join(".")
+    url = "http://#{hostname}:#{port}/SyncStatus"
+    response = Req.get!(url)
+    response.body |> parse_status()
+  end
+
   def parse_status(xml_string) when is_binary(xml_string) do
     xml_tree = SweetXml.parse(xml_string)
 
-    xml_tree
-    |> xpath(~x"/*/*"el)
-    |> Enum.map(fn element ->
-      {
-        SweetXml.xpath(element, ~x"name()"s),
-        SweetXml.xpath(element, ~x"text()"s)
-      }
-    end)
-    |> Map.new()
-    |> Map.put("etag", xpath(xml_tree, ~x"/*/@etag"s))
+    children =
+      xml_tree
+      |> xpath(~x"/*/*"el)
+      |> Enum.map(fn element ->
+        {xpath(element, ~x"name()"s), xpath(element, ~x"text()"s)}
+      end)
+      |> Map.new()
+
+    attributes =
+      xml_tree
+      |> xpath(~x"/*/@*"el)
+      |> Enum.map(fn element ->
+        {xpath(element, ~x"name()"s), xpath(element, ~x"string(.)"s)}
+      end)
+      |> Map.new()
+
+    Map.merge(children, attributes)
+  end
+
+  @lsdp_port 11430
+
+  def lsdp_socket() do
+    {:ok, socket} = :gen_udp.open(@lsdp_port)
+    socket
+  end
+
+  def lsdp_close(socket) do
+    :gen_udp.close(socket)
+  end
+
+  def extract_len_block(bytes, offset \\ 1) when is_binary(bytes) do
+    <<len::integer, block::binary-size(len - ^offset), rest::binary>> = bytes
+    {block, rest}
+  end
+
+  def extract_announce_header(<<65, bytes::binary>>) do
+    {id, rest} = extract_len_block(bytes, 0)
+    {ip, _} = extract_len_block(rest, 0)
+    %{id: id, ip: ip |> :binary.bin_to_list() |> List.to_tuple()}
+  end
+
+  def lsdp_parse_announce(packet) when is_binary(packet) do
+    {"LSDP" <> <<1>>, body} = BlueOSNowPlaying.extract_len_block(packet)
+    {announce, <<>>} = BlueOSNowPlaying.extract_len_block(body)
+    BlueOSNowPlaying.extract_announce_header(announce)
   end
 end
