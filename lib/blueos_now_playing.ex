@@ -161,4 +161,19 @@ defmodule BlueOSNowPlaying do
     sync_state = get_sync_status(state["ip"], state["port"])
     state["name"] == sync_state["name"]
   end
+
+  @main_status_attributes ~w(title1 title2 title3 state totlen secs image quality streamFormat)s
+  @integer_attributes ~w(secs totlen)s
+
+  def process_status(map) do
+    map = Map.take(map, @main_status_attributes)
+
+    Enum.reduce(@integer_attributes, map, fn key, acc ->
+      if Map.has_key?(map, key) do
+        Map.update!(acc, key, &String.to_integer/1)
+      else
+        acc
+      end
+    end)
+  end
 end
