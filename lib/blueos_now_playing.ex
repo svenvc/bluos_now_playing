@@ -12,26 +12,53 @@ defmodule BlueOSNowPlaying do
   def get_status(host, port \\ @default_port) when is_tuple(host) do
     hostname = host |> ip_to_string()
     url = "http://#{hostname}:#{port}/Status"
+
     response = Req.get!(url)
+
     response.body |> parse_status()
   end
 
   def get_status_long(etag, host, port \\ @default_port) when is_tuple(host) do
     hostname = host |> ip_to_string()
     url = "http://#{hostname}:#{port}/Status?etag=#{etag}&timeout=#{@default_timeout}"
-    response = Req.get!(url, receive_timeout: (@default_timeout + 5) * 1000)
+
+    response =
+      Req.get!(url,
+        receive_timeout: (@default_timeout + 5) * 1000
+      )
+
     response.body |> parse_status()
   end
 
   def get_sync_status(host, port \\ @default_port) when is_tuple(host) do
     hostname = host |> ip_to_string()
     url = "http://#{hostname}:#{port}/SyncStatus"
-    response = Req.get!(url)
+
+    response =
+      Req.get!(url,
+        connect_options: [timeout: 250],
+        receive_timeout: 250,
+        retry: false
+      )
+
     response.body |> parse_status()
   end
 
   def ip_to_string(ip) when is_tuple(ip) do
-    ip |> Tuple.to_list() |> Enum.map(&to_string(&1)) |> Enum.join(".")
+    ip
+    |> Tuple.to_list()
+    |> Enum.map(&to_string(&1))
+    |> Enum.join(".")
+  end
+
+  def string_to_ip(string) when is_binary(string) do
+    string
+    |> String.split(".")
+    |> Enum.map(fn s ->
+      {i, ""} = Integer.parse(s)
+      i
+    end)
+    |> List.to_tuple()
   end
 
   def parse_status(xml_string) when is_binary(xml_string) do
@@ -103,5 +130,35 @@ defmodule BlueOSNowPlaying do
     :gen_udp.send(socket, @udp_broadcast_address, @lsdp_port, packet)
     :gen_udp.close(socket)
     packet
+  end
+
+  @filename ".bluos_now_playing.json"
+  @state_keys ~w(id name ip port)s
+
+  def save_state(state) when is_map(state) do
+    state
+    |> Map.take(@state_keys)
+    |> Map.update("ip", "0.0.0.0", &ip_to_string/1)
+    |> Map.update("id", <<>>, &Base.encode16/1)
+    |> JSON.encode_to_iodata!()
+    |> then(fn data ->
+      File.write(@filename, data)
+    end)
+  end
+
+  def load_state() do
+    if File.exists?(@filename) do
+      File.read!(@filename)
+      |> JSON.decode!()
+      |> Map.update("ip", {0, 0, 0, 0}, &string_to_ip/1)
+      |> Map.update("id", <<>>, &Base.decode16!/1)
+    else
+      %{"id" => <<>>, "name" => "", "ip" => {0, 0, 0, 0}, "port" => @default_port}
+    end
+  end
+
+  def is_player_up?(state) when is_map(state) do
+    sync_state = get_sync_status(state["ip"], state["port"])
+    state["name"] == sync_state["name"]
   end
 end

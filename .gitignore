@@ -35,3 +35,4 @@ blueos_now_playing-*.tar
 npm-debug.log
 /assets/node_modules/
 
+.bluos_now_playing.json
