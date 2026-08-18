@@ -18,6 +18,8 @@ defmodule BlueOSNowPlayingWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live "/now-playing", NowPlaying
   end
 
   # Other scopes may use custom stacks.
