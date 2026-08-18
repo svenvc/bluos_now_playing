@@ -1,12 +1,65 @@
 defmodule BlueOSNowPlayingWeb.NowPlaying do
   use BlueOSNowPlayingWeb, :live_view
 
+  alias BlueOSNowPlaying.Utils
+
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="bg-sky-500 bg-cover bg-center h-screen grid justify-center">
-      <h1 class="text-9xl font-bold text-neutral-50 mt-20 mb-20">Now Playing</h1>
-      <p class="text-xl text-neutral-50 mb-20 font-mono">Seconds: {@secs}</p>
+    <div class="min-h-screen h-screen overflow-hidden bg-black text-white">
+      <!-- Artwork-derived atmosphere -->
+      <div
+        class="fixed inset-0 bg-cover bg-center scale-110 blur-3xl opacity-50"
+        style={"background-image: url(#{@image})"}
+      />
+      <!-- Dark tint -->
+      <div class="fixed inset-0 bg-black/10" />
+      <!-- Everything visible -->
+      <main class="relative z-10 h-full min-h-0 flex flex-col items-center px-6 py-4 sm:py-6">
+        <!-- Artwork area
+             flex-1 means it takes whatever vertical space remains -->
+        <div class="flex-1 min-h-0 w-full flex items-center justify-center">
+          <img
+            src={"#{@image}"}
+            class="max-w-full max-h-full aspect-square object-cover rounded-lg shadow-2xl"
+          />
+        </div>
+        <!-- Track information -->
+        <section class="shrink-0 w-full max-w-3xl text-center mt-4">
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight">
+            {@title1}
+          </h1>
+          <p class="text-lg sm:text-xl md:text-2xl text-white/80">
+            {@title2}
+          </p>
+          <p class="text-base sm:text-lg text-white/55">
+            {@title3}
+          </p>
+          <!-- Technical information -->
+          <div class="flex justify-center items-center gap-3 mt-2 text-xs sm:text-sm text-white/40">
+            <span>{@quality}</span>
+            <span>{@format}</span>
+            <span>{@state}</span>
+          </div>
+          <!-- Progress -->
+          <div class="w-full mt-3 pb-1">
+            <div class="flex justify-between text-sm text-white/60 mb-1">
+              <span>0:00</span>
+              <span>{@total}</span>
+            </div>
+            <div class="h-1.5 w-full rounded-full bg-white/25 overflow-hidden">
+              <div
+                class="h-full rounded-full bg-white/90"
+                style={"width: #{@progress}%"}
+              />
+            </div>
+            <div class="flex justify-between text-sm text-white/60 mt-1">
+              <span>{@current}</span>
+              <span>{@remaining}</span>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
     """
   end
@@ -17,7 +70,34 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
       Process.send_after(self(), :update_secs, 1000)
     end
 
-    {:ok, assign(socket, page_title: "Now Playing", secs: 0)}
+    {:ok,
+     socket
+     |> assign(
+       page_title: "Now Playing",
+       image:
+         "/proxy-img?#{URI.encode_query(%{url: "/Artwork?service=Qobuz&songid=Qobuz%3A47683566"})}",
+       title1: "Shine On You Crazy Diamond (Pts. 6-9)",
+       title2: "Pink Floyd",
+       title3: "Wish You Were Here",
+       quality: "HD",
+       format: "FLAC 24/96",
+       totlen: 743,
+       state: "Playing",
+       secs: 12
+     )
+     |> assign_progress()}
+  end
+
+  def assign_progress(socket) do
+    %{assigns: %{secs: secs, totlen: totlen}} = socket
+
+    socket
+    |> assign(
+      progress: Float.round(secs / totlen * 100, 1),
+      current: Utils.format_time(secs),
+      remaining: Utils.format_time(totlen - secs),
+      total: Utils.format_time(totlen)
+    )
   end
 
   @impl true
@@ -26,6 +106,6 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
 
     Process.send_after(self(), :update_secs, 1000)
 
-    {:noreply, assign(socket, secs: secs + 1)}
+    {:noreply, assign(socket, secs: secs + 1) |> assign_progress()}
   end
 end
