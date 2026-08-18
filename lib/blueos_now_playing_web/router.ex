@@ -20,6 +20,8 @@ defmodule BlueOSNowPlayingWeb.Router do
     get "/", PageController, :home
 
     live "/now-playing", NowPlaying
+
+    get "/proxy-img", ImageProxy, :proxy_img
   end
 
   # Other scopes may use custom stacks.
