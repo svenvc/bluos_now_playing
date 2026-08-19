@@ -74,7 +74,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
     {:ok,
      socket
      |> assign(
-       page_title: "Now Playing",
+       page_title: "BluOS • Now Playing",
        player_name: "NODE NANO",
        image: maybe_proxy_img("/Artwork?service=Qobuz&songid=Qobuz%3A47683566"),
        title1: "Shine On You Crazy Diamond (Pts. 6-9)",
