@@ -38,14 +38,17 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
           <!-- Technical information -->
           <div class="flex justify-center items-center gap-3 mt-2 text-xs text-white/25">
             <span>{@quality}</span>
+            <span>•</span>
             <span>{@format}</span>
+            <span>•</span>
             <span>{@player_name}</span>
+            <span>•</span>
             <span>{@state_label}</span>
           </div>
           <!-- Progress -->
-          <div class="w-full mt-3 pb-1">
+          <div class="w-full mt-3 pb-1 font-mono">
             <div class="flex justify-between text-sm text-white/60 mb-1">
-              <span>0:00</span>
+              <span>00:00</span>
               <span>{@total}</span>
             </div>
             <div class="h-1.5 w-full rounded-full bg-white/25 overflow-hidden">
