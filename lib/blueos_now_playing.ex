@@ -1,72 +1,12 @@
 defmodule BlueOSNowPlaying do
-  import SweetXml
+
+  alias BlueOSNowPlaying.API
+  alias BlueOSNowPlaying.Utils
 
   @moduledoc """
   BlueOSNowPlaying is an interface to a BlueOS (Bluesound) player
   to access the necessary data for a 'now playing' status.
   """
-
-  alias BlueOSNowPlaying.Utils
-
-  @default_port 11000
-  @default_timeout 100
-
-  def get_status(host, port \\ @default_port) when is_tuple(host) do
-    hostname = host |> Utils.ip_to_string()
-    url = "http://#{hostname}:#{port}/Status"
-
-    response = Req.get!(url)
-
-    response.body |> parse_status()
-  end
-
-  def get_status_long(etag, host, port \\ @default_port) when is_tuple(host) do
-    hostname = host |> Utils.ip_to_string()
-    url = "http://#{hostname}:#{port}/Status?etag=#{etag}&timeout=#{@default_timeout}"
-
-    response =
-      Req.get!(url,
-        receive_timeout: (@default_timeout + 5) * 1000
-      )
-
-    response.body |> parse_status()
-  end
-
-  def get_sync_status(host, port \\ @default_port) when is_tuple(host) do
-    hostname = host |> Utils.ip_to_string()
-    url = "http://#{hostname}:#{port}/SyncStatus"
-
-    response =
-      Req.get!(url,
-        connect_options: [timeout: 250],
-        receive_timeout: 250,
-        retry: false
-      )
-
-    response.body |> parse_status()
-  end
-
-  def parse_status(xml_string) when is_binary(xml_string) do
-    xml_tree = SweetXml.parse(xml_string)
-
-    children =
-      xml_tree
-      |> xpath(~x"/*/*"el)
-      |> Enum.map(fn element ->
-        {xpath(element, ~x"name()"s), xpath(element, ~x"text()"s)}
-      end)
-      |> Map.new()
-
-    attributes =
-      xml_tree
-      |> xpath(~x"/*/@*"el)
-      |> Enum.map(fn element ->
-        {xpath(element, ~x"name()"s), xpath(element, ~x"string(.)"s)}
-      end)
-      |> Map.new()
-
-    Map.merge(children, attributes)
-  end
 
   @lsdp_port 11430
 
@@ -138,12 +78,12 @@ defmodule BlueOSNowPlaying do
       |> Map.update("ip", {0, 0, 0, 0}, &Utils.string_to_ip/1)
       |> Map.update("id", <<>>, &Base.decode16!/1)
     else
-      %{"id" => <<>>, "name" => "", "ip" => {0, 0, 0, 0}, "port" => @default_port}
+      %{"id" => <<>>, "name" => "", "ip" => {0, 0, 0, 0}, "port" => API.default_port()}
     end
   end
 
   def is_player_up?(state) when is_map(state) do
-    sync_state = get_sync_status(state["ip"], state["port"])
+    sync_state = API.get_sync_status(state["ip"], state["port"])
     state["name"] == sync_state["name"]
   end
 
