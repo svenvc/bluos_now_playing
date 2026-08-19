@@ -15,7 +15,7 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
       <!-- Dark tint -->
       <div class="fixed inset-0 bg-black/10" />
       <!-- Everything visible -->
-      <main class="relative z-10 h-full min-h-0 flex flex-col items-center px-6 py-4 sm:py-6">
+      <main class="relative z-10 h-full min-h-0 flex flex-col items-center px-6 py-4">
         <!-- Artwork area
              flex-1 means it takes whatever vertical space remains -->
         <div class="flex-1 min-h-0 w-full flex items-center justify-center">
@@ -26,20 +26,21 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
         </div>
         <!-- Track information -->
         <section class="shrink-0 w-full max-w-3xl text-center mt-4">
-          <h1 class="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight">
+          <h1 class="text-xl font-semibold leading-tight">
             {@title1}
           </h1>
-          <p class="text-lg sm:text-xl md:text-2xl text-white/80">
+          <p class="text-lg text-white/80">
             {@title2}
           </p>
-          <p class="text-base sm:text-lg text-white/55">
+          <p class="text-base text-white/55">
             {@title3}
           </p>
           <!-- Technical information -->
-          <div class="flex justify-center items-center gap-3 mt-2 text-xs sm:text-sm text-white/40">
+          <div class="flex justify-center items-center gap-3 mt-2 text-xs text-white/25">
             <span>{@quality}</span>
             <span>{@format}</span>
-            <span>{@state}</span>
+            <span>{@player_name}</span>
+            <span>{@state_label}</span>
           </div>
           <!-- Progress -->
           <div class="w-full mt-3 pb-1">
@@ -74,6 +75,7 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
      socket
      |> assign(
        page_title: "Now Playing",
+       player_name: "NODE NANO",
        image:
          "/proxy-img?#{URI.encode_query(%{url: "/Artwork?service=Qobuz&songid=Qobuz%3A47683566"})}",
        title1: "Shine On You Crazy Diamond (Pts. 6-9)",
@@ -82,7 +84,8 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
        quality: "HD",
        format: "FLAC 24/96",
        totlen: 743,
-       state: "Playing",
+       state: "play",
+       state_label: "PLAYING",
        secs: 12
      )
      |> assign_progress()}
