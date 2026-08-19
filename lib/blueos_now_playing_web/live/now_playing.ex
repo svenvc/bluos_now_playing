@@ -76,7 +76,7 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
      |> assign(
        page_title: "Now Playing",
        player_name: "NODE NANO",
-       image: proxy_img("/Artwork?service=Qobuz&songid=Qobuz%3A47683566"),
+       image: maybe_proxy_img("/Artwork?service=Qobuz&songid=Qobuz%3A47683566"),
        title1: "Shine On You Crazy Diamond (Pts. 6-9)",
        title2: "Pink Floyd",
        title3: "Wish You Were Here",
@@ -111,7 +111,15 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
     {:noreply, assign(socket, secs: min(secs + 1, totlen)) |> assign_progress()}
   end
 
-  defp proxy_img(img_url) do
+  def maybe_proxy_img("https://" <> _ = img_url) do
+    img_url
+  end
+
+  def maybe_proxy_img("http://" <> _ = img_url) do
+    img_url
+  end
+
+  def maybe_proxy_img(img_url) do
     "/proxy-img?#{URI.encode_query(%{url: img_url})}"
   end
 end
