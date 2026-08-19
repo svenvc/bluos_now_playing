@@ -1,4 +1,4 @@
-defmodule BlueOSNowPlaying.LSDP do
+defmodule BluOSNowPlaying.LSDP do
   @moduledoc """
   Support for the Lenbrook Service Discovery Protocol
   """

@@ -1,10 +1,10 @@
-defmodule BlueOSNowPlaying do
+defmodule BluOSNowPlaying do
 
-  alias BlueOSNowPlaying.API
-  alias BlueOSNowPlaying.Utils
+  alias BluOSNowPlaying.API
+  alias BluOSNowPlaying.Utils
 
   @moduledoc """
-  BlueOSNowPlaying is an interface to a BlueOS (Bluesound) player
+  BluOSNowPlaying is an interface to a BluOS (Bluesound) player
   to access the necessary data for a 'now playing' status.
   """
 

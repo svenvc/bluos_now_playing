@@ -1,4 +1,4 @@
-defmodule BlueOSNowPlaying.Application do
+defmodule BluOSNowPlaying.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -8,18 +8,18 @@ defmodule BlueOSNowPlaying.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      BlueOSNowPlayingWeb.Telemetry,
-      {DNSCluster, query: Application.get_env(:blueos_now_playing, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: BlueOSNowPlaying.PubSub},
-      # Start a worker by calling: BlueOSNowPlaying.Worker.start_link(arg)
-      # {BlueOSNowPlaying.Worker, arg},
+      BluOSNowPlayingWeb.Telemetry,
+      {DNSCluster, query: Application.get_env(:bluos_now_playing, :dns_cluster_query) || :ignore},
+      {Phoenix.PubSub, name: BluOSNowPlaying.PubSub},
+      # Start a worker by calling: BluOSNowPlaying.Worker.start_link(arg)
+      # {BluOSNowPlaying.Worker, arg},
       # Start to serve requests, typically the last entry
-      BlueOSNowPlayingWeb.Endpoint
+      BluOSNowPlayingWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: BlueOSNowPlaying.Supervisor]
+    opts = [strategy: :one_for_one, name: BluOSNowPlaying.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
@@ -27,7 +27,7 @@ defmodule BlueOSNowPlaying.Application do
   # whenever the application is updated.
   @impl true
   def config_change(changed, _new, removed) do
-    BlueOSNowPlayingWeb.Endpoint.config_change(changed, removed)
+    BluOSNowPlayingWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 end

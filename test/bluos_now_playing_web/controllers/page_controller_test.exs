@@ -1,5 +1,5 @@
-defmodule BlueOSNowPlayingWeb.PageControllerTest do
-  use BlueOSNowPlayingWeb.ConnCase
+defmodule BluOSNowPlayingWeb.PageControllerTest do
+  use BluOSNowPlayingWeb.ConnCase
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")

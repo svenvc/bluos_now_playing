@@ -1,9 +1,9 @@
-defmodule BlueOSNowPlaying.MixProject do
+defmodule BluOSNowPlaying.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :blueos_now_playing,
+      app: :bluos_now_playing,
       version: "0.1.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -20,7 +20,7 @@ defmodule BlueOSNowPlaying.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {BlueOSNowPlaying.Application, []},
+      mod: {BluOSNowPlaying.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -75,10 +75,10 @@ defmodule BlueOSNowPlaying.MixProject do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind blueos_now_playing", "esbuild blueos_now_playing"],
+      "assets.build": ["compile", "tailwind bluos_now_playing", "esbuild bluos_now_playing"],
       "assets.deploy": [
-        "tailwind blueos_now_playing --minify",
-        "esbuild blueos_now_playing --minify",
+        "tailwind bluos_now_playing --minify",
+        "esbuild bluos_now_playing --minify",
         "phx.digest"
       ],
       precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]

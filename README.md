@@ -1,6 +1,6 @@
-# BlueOSNowPlaying
+# BluOSNowPlaying
 
-BlueOSNowPlaying interfaces with a BlueOS (Bluesound) player
+BluOSNowPlaying interfaces with a BluOS (Bluesound) player
 to access the necessary data for a 'now playing' status.
 
 This web application connects to a BluOS player on your network

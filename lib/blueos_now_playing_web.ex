@@ -1,12 +1,12 @@
-defmodule BlueOSNowPlayingWeb do
+defmodule BluOSNowPlayingWeb do
   @moduledoc """
   The entrypoint for defining your web interface, such
   as controllers, components, channels, and so on.
 
   This can be used in your application as:
 
-      use BlueOSNowPlayingWeb, :controller
-      use BlueOSNowPlayingWeb, :html
+      use BluOSNowPlayingWeb, :controller
+      use BluOSNowPlayingWeb, :html
 
   The definitions below will be executed for every controller,
   component, etc, so keep them short and clean, focused
@@ -80,11 +80,11 @@ defmodule BlueOSNowPlayingWeb do
       # HTML escaping functionality
       import Phoenix.HTML
       # Core UI components
-      import BlueOSNowPlayingWeb.CoreComponents
+      import BluOSNowPlayingWeb.CoreComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
-      alias BlueOSNowPlayingWeb.Layouts
+      alias BluOSNowPlayingWeb.Layouts
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())
@@ -94,9 +94,9 @@ defmodule BlueOSNowPlayingWeb do
   def verified_routes do
     quote do
       use Phoenix.VerifiedRoutes,
-        endpoint: BlueOSNowPlayingWeb.Endpoint,
-        router: BlueOSNowPlayingWeb.Router,
-        statics: BlueOSNowPlayingWeb.static_paths()
+        endpoint: BluOSNowPlayingWeb.Endpoint,
+        router: BluOSNowPlayingWeb.Router,
+        statics: BluOSNowPlayingWeb.static_paths()
     end
   end
 

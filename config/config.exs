@@ -7,25 +7,25 @@
 # General application configuration
 import Config
 
-config :blueos_now_playing,
-  namespace: BlueOSNowPlaying,
+config :bluos_now_playing,
+  namespace: BluOSNowPlaying,
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint
-config :blueos_now_playing, BlueOSNowPlayingWeb.Endpoint,
+config :bluos_now_playing, BluOSNowPlayingWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: BlueOSNowPlayingWeb.ErrorHTML, json: BlueOSNowPlayingWeb.ErrorJSON],
+    formats: [html: BluOSNowPlayingWeb.ErrorHTML, json: BluOSNowPlayingWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: BlueOSNowPlaying.PubSub,
+  pubsub_server: BluOSNowPlaying.PubSub,
   live_view: [signing_salt: "dUH4keKl"]
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
-  blueos_now_playing: [
+  bluos_now_playing: [
     args:
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
@@ -35,7 +35,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.1.7",
-  blueos_now_playing: [
+  bluos_now_playing: [
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css

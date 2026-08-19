@@ -6,7 +6,7 @@ import Config
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :blueos_now_playing, BlueOSNowPlayingWeb.Endpoint,
+config :bluos_now_playing, BluOSNowPlayingWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PORT") || "4000")],
@@ -15,8 +15,8 @@ config :blueos_now_playing, BlueOSNowPlayingWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "8KXB5WJXtGgSIrGo99XQgdeZSbV8bad3Otq3GoeIm+3hMN/MHChMXoxhcyWfqe+g",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:blueos_now_playing, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:blueos_now_playing, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:bluos_now_playing, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:bluos_now_playing, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -43,17 +43,17 @@ config :blueos_now_playing, BlueOSNowPlayingWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :blueos_now_playing, BlueOSNowPlayingWeb.Endpoint,
+config :bluos_now_playing, BluOSNowPlayingWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"lib/blueos_now_playing_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
+      ~r"lib/bluos_now_playing_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :blueos_now_playing, dev_routes: true
+config :bluos_now_playing, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

@@ -1,5 +1,5 @@
-defmodule BlueOSNowPlayingWeb.ImageProxy do
-  use BlueOSNowPlayingWeb, :controller
+defmodule BluOSNowPlayingWeb.ImageProxy do
+  use BluOSNowPlayingWeb, :controller
 
   def proxy_img(conn, %{"url" => url}) do
     case Req.get("http://#{get_player_host_port()}#{url}") do
@@ -24,15 +24,15 @@ defmodule BlueOSNowPlayingWeb.ImageProxy do
   end
 
   def get_player_host_port() do
-    Application.get_env(:blueos_now_playing, :player_host_port, "not-set:6666")
+    Application.get_env(:bluos_now_playing, :player_host_port, "not-set:6666")
   end
 
   def set_player_host_port(host_port) do
-    Application.put_env(:blueos_now_playing, :player_host_port, host_port)
+    Application.put_env(:bluos_now_playing, :player_host_port, host_port)
   end
 
   def image_not_found_fallback() do
-    Application.app_dir(:blueos_now_playing, "priv/static/images/image-not-found.png")
+    Application.app_dir(:bluos_now_playing, "priv/static/images/image-not-found.png")
     |> File.read!()
   end
 end

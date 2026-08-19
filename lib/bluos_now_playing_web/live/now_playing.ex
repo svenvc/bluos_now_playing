@@ -1,7 +1,7 @@
-defmodule BlueOSNowPlayingWeb.NowPlaying do
-  use BlueOSNowPlayingWeb, :live_view
+defmodule BluOSNowPlayingWeb.NowPlaying do
+  use BluOSNowPlayingWeb, :live_view
 
-  alias BlueOSNowPlaying.Utils
+  alias BluOSNowPlaying.Utils
 
   @impl true
   def render(assigns) do

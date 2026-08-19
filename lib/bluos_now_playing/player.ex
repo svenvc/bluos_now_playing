@@ -1,4 +1,4 @@
-defmodule BlueOSNowPlaying.Player do
+defmodule BluOSNowPlaying.Player do
   use GenServer
 
   require Logger

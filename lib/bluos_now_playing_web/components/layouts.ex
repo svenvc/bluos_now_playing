@@ -1,9 +1,9 @@
-defmodule BlueOSNowPlayingWeb.Layouts do
+defmodule BluOSNowPlayingWeb.Layouts do
   @moduledoc """
   This module holds layouts and related functionality
   used by your application.
   """
-  use BlueOSNowPlayingWeb, :html
+  use BluOSNowPlayingWeb, :html
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML

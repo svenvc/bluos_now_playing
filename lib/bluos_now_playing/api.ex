@@ -1,11 +1,11 @@
-defmodule BlueOSNowPlaying.API do
+defmodule BluOSNowPlaying.API do
   @moduledoc """
   Support for a couple of BluOS Custom Integration API calls.
   """
 
   import SweetXml
 
-  alias BlueOSNowPlaying.Utils
+  alias BluOSNowPlaying.Utils
 
   @default_port 11000
 

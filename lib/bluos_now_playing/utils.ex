@@ -1,4 +1,4 @@
-defmodule BlueOSNowPlaying.Utils do
+defmodule BluOSNowPlaying.Utils do
   def ip_to_string(ip) when is_tuple(ip) do
     ip
     |> Tuple.to_list()
