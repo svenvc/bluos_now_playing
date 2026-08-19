@@ -104,11 +104,11 @@ defmodule BlueOSNowPlayingWeb.NowPlaying do
 
   @impl true
   def handle_info(:update_secs, socket) do
-    %{assigns: %{secs: secs}} = socket
+    %{assigns: %{secs: secs, totlen: totlen}} = socket
 
     Process.send_after(self(), :update_secs, 1000)
 
-    {:noreply, assign(socket, secs: secs + 1) |> assign_progress()}
+    {:noreply, assign(socket, secs: min(secs + 1, totlen)) |> assign_progress()}
   end
 
   defp proxy_img(img_url) do
