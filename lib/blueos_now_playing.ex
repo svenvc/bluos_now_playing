@@ -63,8 +63,8 @@ defmodule BlueOSNowPlaying do
   def save_state(state) when is_map(state) do
     state
     |> Map.take(@state_keys)
-    |> Map.update("ip", "0.0.0.0", &Utils.ip_to_string/1)
-    |> Map.update("id", <<>>, &Base.encode16/1)
+    |> Map.update("ip", nil, &Utils.ip_to_string/1)
+    |> Map.update("id", nil, &Base.encode16/1)
     |> JSON.encode_to_iodata!()
     |> then(fn data ->
       File.write(@filename, data)
@@ -75,10 +75,10 @@ defmodule BlueOSNowPlaying do
     if File.exists?(@filename) do
       File.read!(@filename)
       |> JSON.decode!()
-      |> Map.update("ip", {0, 0, 0, 0}, &Utils.string_to_ip/1)
-      |> Map.update("id", <<>>, &Base.decode16!/1)
+      |> Map.update("ip", nil, &Utils.string_to_ip/1)
+      |> Map.update("id", nil, &Base.decode16!/1)
     else
-      %{"id" => <<>>, "name" => "", "ip" => {0, 0, 0, 0}, "port" => API.default_port()}
+      %{"id" => nil, "name" => nil, "ip" => nil, "port" => API.default_port()}
     end
   end
 
