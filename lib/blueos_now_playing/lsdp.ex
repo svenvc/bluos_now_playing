@@ -1,12 +1,18 @@
 defmodule BlueOSNowPlaying.LSDP do
-  @lsdp_port 11430
+  @moduledoc """
+  Support for the Lenbrook Service Discovery Protocol
+  """
 
-  def lsdp_socket() do
-    {:ok, socket} = :gen_udp.open(@lsdp_port)
+  @port 11430
+
+  def port, do: @port
+
+  def socket() do
+    {:ok, socket} = :gen_udp.open(@port)
     socket
   end
 
-  def lsdp_close(socket) do
+  def close(socket) do
     :gen_udp.close(socket)
   end
 
@@ -16,34 +22,34 @@ defmodule BlueOSNowPlaying.LSDP do
     {block, rest}
   end
 
-  def extract_announce_header("A" <> <<bytes::binary>>) do
+  def extract_announce_header(<<"A", bytes::binary>>) do
     {id, rest} = extract_len_block(bytes, false)
     {ip, _} = extract_len_block(rest, false)
     ip = ip |> :binary.bin_to_list() |> List.to_tuple()
     %{id: id, ip: ip}
   end
 
-  @lsdp_magic "LSDP"
-  @lsdp_version 1
+  @magic "LSDP"
+  @version 1
 
-  def lsdp_header, do: @lsdp_magic <> <<@lsdp_version>>
+  def header, do: @magic <> <<@version>>
 
-  def lsdp_parse_announce(packet) when is_binary(packet) do
-    {@lsdp_magic <> <<@lsdp_version>>, body} = extract_len_block(packet)
+  def parse_announce(packet) when is_binary(packet) do
+    {@magic <> <<@version>>, body} = extract_len_block(packet)
     {announce, <<>>} = extract_len_block(body)
     extract_announce_header(announce)
   end
 
-  @lsdp_all <<255, 255>>
+  @class_all <<255, 255>>
 
-  def lsdp_query(), do: <<5>> <> "Q" <> <<1>> <> @lsdp_all
+  def query(), do: <<5, "Q", 1, @class_all>>
 
   @udp_broadcast_address {255, 255, 255, 255}
 
   def broadcast_query() do
     {:ok, socket} = :gen_udp.open(0, [:binary, broadcast: true])
-    packet = <<byte_size(lsdp_header()) + 1>> <> lsdp_header() <> lsdp_query()
-    :gen_udp.send(socket, @udp_broadcast_address, @lsdp_port, packet)
+    packet = <<byte_size(header()) + 1, header()::binary, query()::binary>>
+    :gen_udp.send(socket, @udp_broadcast_address, @port, packet)
     :gen_udp.close(socket)
     packet
   end
