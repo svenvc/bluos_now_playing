@@ -3,6 +3,20 @@ defmodule BluOSNowPlaying.Player do
 
   require Logger
 
+  @empty_player_status %{
+    player_name: "BluOS Player",
+    image: "/image-not-found.png",
+    title1: "-",
+    title2: "--",
+    title3: "---",
+    quality: "Q",
+    format: "F",
+    totlen: 0,
+    state: "stop",
+    state_label: "STOPPED",
+    secs: 0
+  }
+
   @impl true
   def init(init_arg) do
     Logger.info("Player init #{inspect(init_arg)}")
@@ -12,9 +26,14 @@ defmodule BluOSNowPlaying.Player do
         player_core_state: %{},
         player_sync_status_raw: %{},
         player_status_raw: %{},
-        player_status: %{}
+        player_status: @empty_player_status
       }
-      |> maybe_load_saved_core_state()
+
+    initial_state =
+      case init_arg do
+        :saved -> initial_state |> maybe_load_saved_core_state()
+        :none -> initial_state
+      end
 
     {:ok, initial_state, {:continue, :start}}
   end
@@ -27,7 +46,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_call({:status, refresh?}, _from, state) do
-    Logger.info("Player call :status")
+    Logger.info("Player call :status refresh=#{refresh?}")
 
     state =
       if refresh? do
@@ -77,36 +96,44 @@ defmodule BluOSNowPlaying.Player do
   def maybe_load_saved_core_state(state) do
     core_state = BluOSNowPlaying.load_state()
 
-    if BluOSNowPlaying.is_player_up?(core_state) do
-      sync_status = BluOSNowPlaying.API.get_sync_status(core_state["ip"])
+    if core_state["id"] && BluOSNowPlaying.is_player_up?(core_state) do
+      case BluOSNowPlaying.API.get_sync_status(core_state["ip"]) do
+        {:ok, sync_status} ->
+          state
+          |> Map.put(:player_core_state, core_state)
+          |> Map.put(:player_sync_status_raw, sync_status)
+          |> load_status()
 
-      state
-      |> Map.put(:player_core_state, core_state)
-      |> Map.put(:player_sync_status_raw, sync_status)
-      |> load_status()
+        _ ->
+          state
+      end
     else
       state
     end
   end
 
   def load_status(state) do
-    status = BluOSNowPlaying.API.get_status(state.player_core_state["ip"])
+    case BluOSNowPlaying.API.get_status(state.player_core_state["ip"]) do
+      {:ok, status} ->
+        processed_status =
+          status
+          |> BluOSNowPlaying.process_status()
+          |> Map.put(:player_name, state.player_sync_status_raw["name"])
 
-    processed_status =
-      status
-      |> BluOSNowPlaying.process_status()
-      |> Map.put("name", state.player_sync_status_raw["name"])
+        state
+        |> Map.put(:player_status_raw, status)
+        |> Map.put(:player_status, processed_status)
 
-    state
-    |> Map.put(:player_status_raw, status)
-    |> Map.put(:player_status, processed_status)
+      _ ->
+        state
+    end
   end
 
   # API
 
-  def start() do
+  def start(init_arg \\ :saved) do
     Logger.info("Binding new #{inspect(__MODULE__)}")
-    GenServer.start(__MODULE__, nil, name: __MODULE__)
+    GenServer.start(__MODULE__, init_arg, name: __MODULE__)
   end
 
   def stop() do

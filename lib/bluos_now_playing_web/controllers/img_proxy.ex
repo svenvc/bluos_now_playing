@@ -1,8 +1,14 @@
 defmodule BluOSNowPlayingWeb.ImageProxy do
   use BluOSNowPlayingWeb, :controller
 
-  def proxy_img(conn, %{"url" => url}) do
-    case Req.get("http://#{get_player_host_port()}#{url}") do
+  require Logger
+
+  def proxy_img(conn, %{"url" => image_url}) do
+    url = "http://#{get_player_host_port() || "ip-not-set"}#{image_url}"
+
+    Logger.info("GET #{url}")
+
+    case Req.get(url) do
       {:ok, %Req.Response{status: 200} = response} ->
         [content_type] = response.headers["content-type"]
 

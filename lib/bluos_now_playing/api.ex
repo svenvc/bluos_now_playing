@@ -5,47 +5,98 @@ defmodule BluOSNowPlaying.API do
 
   import SweetXml
 
+  require Logger
+
   alias BluOSNowPlaying.Utils
 
   @default_port 11000
 
   def default_port, do: @default_port
 
-  @default_timeout 100
+  def get_status(host, port \\ @default_port)
 
-  def get_status(host, port \\ @default_port) when is_tuple(host) do
+  def get_status(nil, _), do: {:error, :no_ip}
+
+  def get_status(host, port) when is_tuple(host) do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/Status"
 
-    response = Req.get!(url)
+    Logger.info("GET #{url}")
 
-    response.body |> parse_status()
+    case Req.get(url) do
+      {:ok,
+       %Req.Response{
+         status: 200,
+         headers: %{
+           "content-type" => ["application/xml"]
+         },
+         body: body
+       }} ->
+        {:ok, parse_status(body)}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
-  def get_status_long(etag, host, port \\ @default_port) when is_tuple(host) do
+  @default_timeout 100
+
+  def get_status_long(etag, host, port \\ @default_port)
+
+  def get_status_long(_, nil, _), do: {:error, :no_ip}
+
+  def get_status_long(etag, host, port) when is_tuple(host) do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/Status?etag=#{etag}&timeout=#{@default_timeout}"
 
-    response =
-      Req.get!(url,
-        receive_timeout: (@default_timeout + 5) * 1000
-      )
+    Logger.info("GET #{url}")
 
-    response.body |> parse_status()
+    case Req.get(url,
+           receive_timeout: (@default_timeout + 5) * 1000
+         ) do
+      {:ok,
+       %Req.Response{
+         status: 200,
+         headers: %{
+           "content-type" => ["application/xml"]
+         },
+         body: body
+       }} ->
+        {:ok, parse_status(body)}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
-  def get_sync_status(host, port \\ @default_port) when is_tuple(host) do
+  def get_sync_status(host, port \\ @default_port)
+
+  def get_sync_status(nil, _), do: {:error, :no_ip}
+
+  def get_sync_status(host, port) when is_tuple(host) do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/SyncStatus"
 
-    response =
-      Req.get!(url,
-        connect_options: [timeout: 250],
-        receive_timeout: 250,
-        retry: false
-      )
+    Logger.info("GET #{url}")
 
-    response.body |> parse_status()
+    case Req.get(url,
+           connect_options: [timeout: 250],
+           receive_timeout: 250,
+           retry: false
+         ) do
+      {:ok,
+       %Req.Response{
+         status: 200,
+         headers: %{
+           "content-type" => ["application/xml"]
+         },
+         body: body
+       }} ->
+        {:ok, parse_status(body)}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def parse_status(xml_string) when is_binary(xml_string) do

@@ -74,22 +74,17 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
       Process.send_after(self(), :update_secs, 1000)
     end
 
+    player_status =
+      BluOSNowPlaying.Player.status(true)
+      |> Map.update!(:image, &maybe_proxy_img/1)
+
+    BluOSNowPlaying.Player.host_port()
+    |> BluOSNowPlayingWeb.ImageProxy.set_player_host_port()
+
     {:ok,
      socket
-     |> assign(
-       page_title: "BluOS • Now Playing",
-       player_name: "NODE NANO",
-       image: maybe_proxy_img("/Artwork?service=Qobuz&songid=Qobuz%3A47683566"),
-       title1: "Shine On You Crazy Diamond (Pts. 6-9)",
-       title2: "Pink Floyd",
-       title3: "Wish You Were Here",
-       quality: "HD",
-       format: "FLAC 24/96",
-       totlen: 743,
-       state: "play",
-       state_label: "PLAYING",
-       secs: 12
-     )
+     |> assign(page_title: "BluOS • Now Playing")
+     |> assign(player_status)
      |> assign_progress()}
   end
 
@@ -98,7 +93,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
 
     socket
     |> assign(
-      progress: Float.round(secs / totlen * 100, 1),
+      progress: Float.round(if(totlen == 0, do: 0.0, else: secs / totlen * 100), 1),
       current: Utils.format_time(secs),
       remaining: Utils.format_time(totlen - secs),
       total: Utils.format_time(totlen)

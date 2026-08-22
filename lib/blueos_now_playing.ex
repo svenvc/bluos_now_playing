@@ -1,5 +1,4 @@
 defmodule BluOSNowPlaying do
-
   alias BluOSNowPlaying.API
   alias BluOSNowPlaying.Utils
 
@@ -34,8 +33,13 @@ defmodule BluOSNowPlaying do
   end
 
   def is_player_up?(state) when is_map(state) do
-    sync_state = API.get_sync_status(state["ip"], state["port"])
-    state["name"] == sync_state["name"]
+    case API.get_sync_status(state["ip"], state["port"]) do
+      {:ok, sync_state} ->
+        state["name"] == sync_state["name"]
+
+      _ ->
+        false
+    end
   end
 
   @main_status_attributes ~w(title1 title2 title3 state totlen secs image quality streamFormat)s
@@ -44,12 +48,26 @@ defmodule BluOSNowPlaying do
   def process_status(map) do
     map = Map.take(map, @main_status_attributes)
 
-    Enum.reduce(@integer_attributes, map, fn key, acc ->
-      if Map.has_key?(map, key) do
-        Map.update!(acc, key, &String.to_integer/1)
-      else
-        acc
-      end
-    end)
+    map =
+      Enum.reduce(@integer_attributes, map, fn key, acc ->
+        if Map.has_key?(map, key) do
+          Map.update!(acc, key, &String.to_integer/1)
+        else
+          acc
+        end
+      end)
+      |> Map.update!("quality", &String.upcase/1)
+      |> Map.update!("streamFormat", &String.upcase/1)
+
+    map
+    |> Map.put("state_label", state_label(map["state"]))
+    |> Map.put("format", map["streamFormat"])
+    |> Map.delete("streamFormat")
+    |> Enum.into(%{}, fn {key, value} -> {String.to_atom(key), value} end)
   end
+
+  defp state_label(state) when state in ~w(play stream)s, do: "PLAYING"
+  defp state_label("stop"), do: "STOPPED"
+  defp state_label("pause"), do: "PAUSED"
+  defp state_label(_state), do: "UNKNOWN"
 end
