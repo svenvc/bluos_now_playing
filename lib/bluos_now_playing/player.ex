@@ -41,21 +41,24 @@ defmodule BluOSNowPlaying.Player do
   @impl true
   def handle_continue(:start, state) do
     Logger.info("Player continue :start")
+
+    invoke_task_update_status_long(state)
+
     {:noreply, state}
   end
 
   @impl true
   def handle_call({:status, refresh?}, _from, state) do
-    Logger.info("Player call :status refresh=#{refresh?}")
+    Logger.info("Player call :status refresh?=#{refresh?}")
 
-    state =
+    new_state =
       if refresh? do
         load_status(state)
       else
         state
       end
 
-    {:reply, state.player_status, state}
+    {:reply, new_state.player_status, new_state}
   end
 
   @impl true
@@ -86,9 +89,16 @@ defmodule BluOSNowPlaying.Player do
   end
 
   @impl true
-  def handle_info(:yo, state) do
-    Logger.info("Player :yo")
-    {:noreply, state}
+  def handle_info({:update_status, new_status}, state) do
+    Logger.info(
+      "Player :update_status new_status=#{inspect(new_status |> Map.take(~w(state secs totlen etag)))}"
+    )
+
+    new_state = state |> update_status(new_status)
+
+    invoke_task_update_status_long(new_state)
+
+    {:noreply, new_state}
   end
 
   # Internal
@@ -115,18 +125,48 @@ defmodule BluOSNowPlaying.Player do
   def load_status(state) do
     case BluOSNowPlaying.API.get_status(state.player_core_state["ip"]) do
       {:ok, status} ->
-        processed_status =
-          status
-          |> BluOSNowPlaying.process_status()
-          |> Map.put(:player_name, state.player_sync_status_raw["name"])
-
-        state
-        |> Map.put(:player_status_raw, status)
-        |> Map.put(:player_status, processed_status)
+        state |> update_status(status)
 
       _ ->
         state
     end
+  end
+
+  def update_status(state, nil), do: state
+
+  def update_status(state, status) do
+    processed_status =
+      status
+      |> BluOSNowPlaying.process_status()
+      |> Map.put(:player_name, state.player_sync_status_raw["name"])
+
+    state
+    |> Map.put(:player_status_raw, status)
+    |> Map.put(:player_status, processed_status)
+  end
+
+  def invoke_task_update_status_long(state) do
+    host = state.player_core_state["ip"]
+    port = state.player_core_state["port"]
+
+    etag = state.player_status_raw["etag"]
+
+    start_task_update_status_long(etag, host, port)
+  end
+
+  def start_task_update_status_long(_, nil, _) do
+    Process.send_after(self(), {:update_status, nil}, 10_000)
+  end
+
+  def start_task_update_status_long(etag, host, port) do
+    parent = self()
+
+    Task.start(fn ->
+      case BluOSNowPlaying.API.get_status_long(etag, host, port) do
+        {:ok, status} -> send(parent, {:update_status, status})
+        _ -> send(parent, {:update_status, nil})
+      end
+    end)
   end
 
   # API

@@ -56,8 +56,8 @@ defmodule BluOSNowPlaying do
           acc
         end
       end)
-      |> Map.update!("quality", &String.upcase/1)
-      |> Map.update!("streamFormat", &String.upcase/1)
+      |> Map.update("quality", "Q", &String.upcase/1)
+      |> Map.update("streamFormat", "F", &String.upcase/1)
 
     map
     |> Map.put("state_label", state_label(map["state"]))
