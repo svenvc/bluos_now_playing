@@ -102,11 +102,15 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
 
   @impl true
   def handle_info(:update_secs, socket) do
-    %{assigns: %{secs: secs, totlen: totlen}} = socket
+    %{assigns: %{secs: secs, totlen: totlen, state: state}} = socket
 
     Process.send_after(self(), :update_secs, 1000)
 
-    {:noreply, assign(socket, secs: min(secs + 1, totlen)) |> assign_progress()}
+    if state in ~w(play stream) do
+      {:noreply, assign(socket, secs: min(secs + 1, totlen)) |> assign_progress()}
+    else
+      {:noreply, socket}
+    end
   end
 
   def maybe_proxy_img("https://" <> _ = img_url) do
