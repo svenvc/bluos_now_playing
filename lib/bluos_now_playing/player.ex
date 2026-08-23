@@ -4,6 +4,8 @@ defmodule BluOSNowPlaying.Player do
   require Logger
 
   alias BluOSNowPlaying.API
+  alias BluOSNowPlaying.LSDP
+  alias BluOSNowPlaying.Utils
 
   @empty_player_status %{
     player_name: "BluOS Player",
@@ -44,9 +46,12 @@ defmodule BluOSNowPlaying.Player do
   def handle_continue(:start, state) do
     Logger.info("Player continue :start")
 
-    invoke_task_update_status_long(state)
+    new_state =
+      state
+      |> invoke_task_update_status_long()
+      |> invoke_task_discovery()
 
-    {:noreply, state}
+    {:noreply, new_state}
   end
 
   @impl true
@@ -71,7 +76,7 @@ defmodule BluOSNowPlaying.Player do
 
     host_port =
       if host && port do
-        "#{host |> BluOSNowPlaying.Utils.ip_to_string()}:#{port}"
+        "#{host |> Utils.ip_to_string()}:#{port}"
       else
         nil
       end
@@ -82,6 +87,7 @@ defmodule BluOSNowPlaying.Player do
   @impl true
   def handle_call(:toggle_play_pause, _from, state) do
     Logger.info("Player call :toggle_play_pause")
+
     host = state.player_core_state["ip"]
     port = state.player_core_state["port"]
 
@@ -89,6 +95,13 @@ defmodule BluOSNowPlaying.Player do
       {:ok, play_pause_state} -> {:reply, play_pause_state, state}
       {:error, _error} -> {:reply, :error, state}
     end
+  end
+
+  @impl true
+  def handle_call(:core_state, _from, state) do
+    Logger.info("Player call :core_state")
+
+    {:reply, state.player_core_state, state}
   end
 
   @impl true
@@ -117,6 +130,24 @@ defmodule BluOSNowPlaying.Player do
       "player",
       {:update_status, new_state.player_status}
     )
+
+    {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info({:udp, _socket, ip, port, bytes}, state) do
+    Logger.info("Player received UDP #{inspect(bytes)} from #{Utils.ip_to_string(ip)}:#{port}")
+
+    new_state =
+      case LSDP.try_parse_announce(bytes |> :binary.list_to_bin()) do
+        %{} = announce ->
+          Logger.info("Player received LSDP announce #{inspect(announce)}")
+
+          state |> process_announce(announce)
+
+        :error ->
+          state
+      end
 
     {:noreply, new_state}
   end
@@ -172,10 +203,11 @@ defmodule BluOSNowPlaying.Player do
   def invoke_task_update_status_long(state) do
     host = state.player_core_state["ip"]
     port = state.player_core_state["port"]
-
     etag = state.player_status_raw["etag"]
 
     start_task_update_status_long(etag, host, port)
+
+    state
   end
 
   def start_task_update_status_long(_, nil, _) do
@@ -193,10 +225,60 @@ defmodule BluOSNowPlaying.Player do
     end)
   end
 
+  def invoke_task_discovery(state) do
+    case LSDP.socket() do
+      {:ok, socket} ->
+        Logger.info("Player listening for LSDP UDP broadcasts")
+
+        new_state = Map.put(state, :socket, socket)
+
+        Task.start(fn -> LSDP.broadcast_query(7) end)
+
+        new_state
+
+      _ ->
+        Logger.info("Player failed to open LSDP UDP socket, in use ?")
+
+        state
+    end
+  end
+
+  def process_announce(state, announce) do
+    ip = announce[:ip]
+    id = announce[:id]
+
+    case API.get_sync_status(ip) do
+      {:ok, sync_status} ->
+        core_state = %{
+          "id" => id,
+          "ip" => ip,
+          "port" => API.default_port(),
+          "name" => sync_status["name"]
+        }
+
+        if core_state == state.player_core_state do
+          Logger.info("Player :core_state unchanged")
+
+          state
+        else
+          Logger.info("Player new :core_state #{inspect(core_state)}")
+
+          BluOSNowPlaying.save_state(core_state)
+
+          state
+          |> Map.put(:player_core_state, core_state)
+          |> Map.put(:player_sync_status_raw, sync_status)
+          |> load_status()
+        end
+
+      _ ->
+        state
+    end
+  end
+
   # API
 
   def start(init_arg \\ :saved) do
-    Logger.info("Binding new #{inspect(__MODULE__)}")
     GenServer.start(__MODULE__, init_arg, name: __MODULE__)
   end
 
@@ -210,6 +292,10 @@ defmodule BluOSNowPlaying.Player do
 
   def status(refresh? \\ false) do
     GenServer.call(__MODULE__, {:status, refresh?})
+  end
+
+  def core_state() do
+    GenServer.call(__MODULE__, :core_state)
   end
 
   def toggle_play_pause() do

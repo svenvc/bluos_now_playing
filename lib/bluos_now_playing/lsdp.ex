@@ -8,8 +8,7 @@ defmodule BluOSNowPlaying.LSDP do
   def port, do: @port
 
   def socket() do
-    {:ok, socket} = :gen_udp.open(@port)
-    socket
+    :gen_udp.open(@port)
   end
 
   def close(socket) do
@@ -40,16 +39,31 @@ defmodule BluOSNowPlaying.LSDP do
     extract_announce_header(announce)
   end
 
+  def try_parse_announce(packet) when is_binary(packet) do
+    try do
+      parse_announce(packet)
+    rescue
+      _ -> :error
+    end
+  end
+
   @class_all <<255, 255>>
 
   def query(), do: <<5, "Q", 1, @class_all>>
 
   @udp_broadcast_address {255, 255, 255, 255}
 
-  def broadcast_query() do
+  def broadcast_query(count \\ 1) do
     {:ok, socket} = :gen_udp.open(0, [:binary, broadcast: true])
     packet = <<byte_size(header()) + 1, header()::binary, query()::binary>>
-    :gen_udp.send(socket, @udp_broadcast_address, @port, packet)
+
+    1..count
+    |> Enum.each(fn step ->
+      :gen_udp.send(socket, @udp_broadcast_address, @port, packet)
+      # space multiple packets progressively wider in time
+      if step < count, do: Process.sleep((step + :rand.uniform(step)) * 100)
+    end)
+
     :gen_udp.close(socket)
     packet
   end
