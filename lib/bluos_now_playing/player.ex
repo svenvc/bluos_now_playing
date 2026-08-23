@@ -116,19 +116,19 @@ defmodule BluOSNowPlaying.Player do
   def maybe_load_saved_core_state(state) do
     core_state = BluOSNowPlaying.load_state()
 
-    if core_state["id"] && BluOSNowPlaying.is_player_up?(core_state) do
-      case BluOSNowPlaying.API.get_sync_status(core_state["ip"]) do
-        {:ok, sync_status} ->
+    case BluOSNowPlaying.API.get_sync_status(core_state["ip"]) do
+      {:ok, sync_status} ->
+        if core_state["name"] == sync_status["name"] do
           state
           |> Map.put(:player_core_state, core_state)
           |> Map.put(:player_sync_status_raw, sync_status)
           |> load_status()
-
-        _ ->
+        else
           state
-      end
-    else
-      state
+        end
+
+      _ ->
+        state
     end
   end
 
