@@ -1,6 +1,8 @@
 defmodule BluOSNowPlayingWeb.NowPlaying do
   use BluOSNowPlayingWeb, :live_view
 
+  require Logger
+
   alias BluOSNowPlaying.Utils
 
   @impl true
@@ -71,6 +73,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
+      Phoenix.PubSub.subscribe(BluOSNowPlaying.PubSub, "player")
       Process.send_after(self(), :update_secs, 1000)
     end
 
@@ -111,6 +114,16 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
     else
       {:noreply, socket}
     end
+  end
+
+  @impl true
+  def handle_info({:update_status, player_status}, socket) do
+    Logger.info("NowPlaying :update_status #{inspect(player_status)}")
+
+    {:noreply,
+     socket
+     |> assign(player_status |> Map.update(:image, "/image-not-found.png", &maybe_proxy_img/1))
+     |> assign_progress()}
   end
 
   def maybe_proxy_img("https://" <> _ = img_url) do

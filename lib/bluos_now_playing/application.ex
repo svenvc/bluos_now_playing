@@ -11,6 +11,7 @@ defmodule BluOSNowPlaying.Application do
       BluOSNowPlayingWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:bluos_now_playing, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: BluOSNowPlaying.PubSub},
+      {BluOSNowPlaying.Player, name: BluOSNowPlaying.Player},
       # Start a worker by calling: BluOSNowPlaying.Worker.start_link(arg)
       # {BluOSNowPlaying.Worker, arg},
       # Start to serve requests, typically the last entry

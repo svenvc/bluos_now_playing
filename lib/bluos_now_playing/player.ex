@@ -98,7 +98,17 @@ defmodule BluOSNowPlaying.Player do
 
     invoke_task_update_status_long(new_state)
 
+    Phoenix.PubSub.broadcast(
+      BluOSNowPlaying.PubSub,
+      "player",
+      {:update_status, new_state.player_status}
+    )
+
     {:noreply, new_state}
+  end
+
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts[:init_arg] || :saved, name: opts[:name] || __MODULE__)
   end
 
   # Internal
