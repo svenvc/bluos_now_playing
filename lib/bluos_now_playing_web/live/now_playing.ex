@@ -3,6 +3,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
 
   require Logger
 
+  alias BluOSNowPlaying.Player
   alias BluOSNowPlaying.Utils
 
   @impl true
@@ -79,10 +80,10 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
     end
 
     player_status =
-      BluOSNowPlaying.Player.status()
+      Player.status()
       |> Map.update!(:image, &maybe_proxy_img/1)
 
-    BluOSNowPlaying.Player.host_port()
+    Player.host_port()
     |> BluOSNowPlayingWeb.ImageProxy.set_player_host_port()
 
     {:ok,
@@ -131,7 +132,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
   def handle_event("toggle-play-pause", _payload, socket) do
     Logger.info("NowPlaying toggle-play-pause")
 
-    BluOSNowPlaying.Player.toggle_play_pause()
+    Player.toggle_play_pause()
 
     {:noreply, socket}
   end

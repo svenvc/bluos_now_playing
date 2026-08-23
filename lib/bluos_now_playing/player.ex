@@ -3,6 +3,8 @@ defmodule BluOSNowPlaying.Player do
 
   require Logger
 
+  alias BluOSNowPlaying.API
+
   @empty_player_status %{
     player_name: "BluOS Player",
     image: "/image-not-found.png",
@@ -79,11 +81,11 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_call(:toggle_play_pause, _from, state) do
-    Logger.info("Player call :host_port")
+    Logger.info("Player call :toggle_play_pause")
     host = state.player_core_state["ip"]
     port = state.player_core_state["port"]
 
-    case BluOSNowPlaying.API.toggle_play_pause(host, port) do
+    case API.toggle_play_pause(host, port) do
       {:ok, play_pause_state} -> {:reply, play_pause_state, state}
       {:error, _error} -> {:reply, :error, state}
     end
@@ -128,7 +130,7 @@ defmodule BluOSNowPlaying.Player do
   def maybe_load_saved_core_state(state) do
     core_state = BluOSNowPlaying.load_state()
 
-    case BluOSNowPlaying.API.get_sync_status(core_state["ip"]) do
+    case API.get_sync_status(core_state["ip"]) do
       {:ok, sync_status} ->
         if core_state["name"] == sync_status["name"] do
           state
@@ -145,7 +147,7 @@ defmodule BluOSNowPlaying.Player do
   end
 
   def load_status(state) do
-    case BluOSNowPlaying.API.get_status(state.player_core_state["ip"]) do
+    case API.get_status(state.player_core_state["ip"]) do
       {:ok, status} ->
         state |> update_status(status)
 
@@ -184,7 +186,7 @@ defmodule BluOSNowPlaying.Player do
     parent = self()
 
     Task.start(fn ->
-      case BluOSNowPlaying.API.get_status_long(etag, host, port) do
+      case API.get_status_long(etag, host, port) do
         {:ok, status} -> send(parent, {:update_status, status})
         _ -> send(parent, {:update_status, nil})
       end
