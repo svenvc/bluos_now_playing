@@ -55,6 +55,19 @@ defmodule BluOSNowPlaying.Player do
   end
 
   @impl true
+  def handle_continue(:broadcast_update_status, state) do
+    Logger.info("Player continue :broadcast_state_update")
+
+    Phoenix.PubSub.broadcast(
+      BluOSNowPlaying.PubSub,
+      "player",
+      {:update_status, state.player_status}
+    )
+
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_call({:status, refresh?}, _from, state) do
     Logger.info("Player call :status refresh?=#{refresh?}")
 
@@ -125,31 +138,22 @@ defmodule BluOSNowPlaying.Player do
 
     invoke_task_update_status_long(new_state)
 
-    Phoenix.PubSub.broadcast(
-      BluOSNowPlaying.PubSub,
-      "player",
-      {:update_status, new_state.player_status}
-    )
-
-    {:noreply, new_state}
+    {:noreply, new_state, {:continue, :broadcast_update_status}}
   end
 
   @impl true
   def handle_info({:udp, _socket, ip, port, bytes}, state) do
     Logger.info("Player received UDP #{inspect(bytes)} from #{Utils.ip_to_string(ip)}:#{port}")
 
-    new_state =
-      case LSDP.try_parse_announce(bytes |> :binary.list_to_bin()) do
-        %{} = announce ->
-          Logger.info("Player received LSDP announce #{inspect(announce)}")
+    case LSDP.try_parse_announce(bytes |> :binary.list_to_bin()) do
+      %{} = announce ->
+        Logger.info("Player received LSDP announce #{inspect(announce)}")
 
-          state |> process_announce(announce)
+        {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
-        :error ->
-          state
-      end
-
-    {:noreply, new_state}
+      :error ->
+        {:noreply, state}
+    end
   end
 
   def start_link(opts) do
