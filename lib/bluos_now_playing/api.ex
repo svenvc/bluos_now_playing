@@ -99,6 +99,32 @@ defmodule BluOSNowPlaying.API do
     end
   end
 
+  def toggle_play_pause(host, port \\ @default_port)
+
+  def toggle_play_pause(nil, _), do: {:error, :no_ip}
+
+  def toggle_play_pause(host, port) when is_tuple(host) do
+    hostname = host |> Utils.ip_to_string()
+    url = "http://#{hostname}:#{port}/Pause?toggle=1"
+
+    Logger.info("GET #{url}")
+
+    case Req.get(url) do
+      {:ok,
+       %Req.Response{
+         status: 200,
+         headers: %{
+           "content-type" => ["application/xml"]
+         },
+         body: body
+       }} ->
+        {:ok, xpath(body, ~x"text()"s)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def parse_status(xml_string) when is_binary(xml_string) do
     xml_tree = SweetXml.parse(xml_string)
 

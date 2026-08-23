@@ -78,6 +78,18 @@ defmodule BluOSNowPlaying.Player do
   end
 
   @impl true
+  def handle_call(:toggle_play_pause, _from, state) do
+    Logger.info("Player call :host_port")
+    host = state.player_core_state["ip"]
+    port = state.player_core_state["port"]
+
+    case BluOSNowPlaying.API.toggle_play_pause(host, port) do
+      {:ok, play_pause_state} -> {:reply, play_pause_state, state}
+      {:error, _error} -> {:reply, :error, state}
+    end
+  end
+
+  @impl true
   def handle_cast(:stop, state) do
     Logger.info("Player :stop")
     {:stop, :normal, state}
@@ -196,5 +208,9 @@ defmodule BluOSNowPlaying.Player do
 
   def status(refresh? \\ false) do
     GenServer.call(__MODULE__, {:status, refresh?})
+  end
+
+  def toggle_play_pause() do
+    GenServer.call(__MODULE__, :toggle_play_pause)
   end
 end

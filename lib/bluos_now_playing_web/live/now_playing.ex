@@ -24,6 +24,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
           <img
             src={"#{@image}"}
             class="max-w-full max-h-full aspect-square object-cover rounded-lg shadow-2xl"
+            phx-click="toggle-play-pause"
           />
         </div>
         <!-- Track information -->
@@ -45,7 +46,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
             <span>•</span>
             <span>{@player_name}</span>
             <span>•</span>
-            <span>{@state_label}</span>
+            <span phx-click="toggle-play-pause">{@state_label}</span>
           </div>
           <!-- Progress -->
           <div class="w-full mt-3 pb-1 font-mono">
@@ -78,7 +79,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
     end
 
     player_status =
-      BluOSNowPlaying.Player.status(true)
+      BluOSNowPlaying.Player.status()
       |> Map.update!(:image, &maybe_proxy_img/1)
 
     BluOSNowPlaying.Player.host_port()
@@ -124,6 +125,15 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
      socket
      |> assign(player_status |> Map.update(:image, "/image-not-found.png", &maybe_proxy_img/1))
      |> assign_progress()}
+  end
+
+  @impl true
+  def handle_event("toggle-play-pause", _payload, socket) do
+    Logger.info("NowPlaying toggle-play-pause")
+
+    BluOSNowPlaying.Player.toggle_play_pause()
+
+    {:noreply, socket}
   end
 
   def maybe_proxy_img("https://" <> _ = img_url) do
