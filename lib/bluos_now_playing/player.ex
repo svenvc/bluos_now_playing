@@ -128,13 +128,22 @@ defmodule BluOSNowPlaying.Player do
     Logger.info("Player stopped #{inspect(reason)}")
   end
 
+  @minimal_fields ~w(state secs totlen etag)
+
   @impl true
   def handle_info({:update_status, new_status}, state) do
-    Logger.info(
-      "Player :update_status new_status=#{inspect(new_status |> Map.take(~w(state secs totlen etag)))}"
-    )
+    new_state =
+      if is_nil(new_status) do
+        Logger.info("Player :update_status new_status=nil")
 
-    new_state = state |> update_status(new_status)
+        state
+      else
+        minimal_status = new_status |> Map.take(@minimal_fields)
+
+        Logger.info("Player :update_status new_status=#{inspect(minimal_status)}")
+
+        state |> update_status(new_status)
+      end
 
     invoke_task_update_status_long(new_state)
 
@@ -143,7 +152,9 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_info({:udp, _socket, ip, port, bytes}, state) do
-    Logger.info("Player received UDP #{inspect(bytes)} from #{Utils.ip_to_string(ip)}:#{port}")
+    Logger.info(
+      "Player received UDP of #{length(bytes)} bytes from #{Utils.ip_to_string(ip)}:#{port}"
+    )
 
     case LSDP.try_parse_announce(bytes |> :binary.list_to_bin()) do
       %{} = announce ->
@@ -152,6 +163,8 @@ defmodule BluOSNowPlaying.Player do
         {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
       :error ->
+        Logger.info("Player received unknown LSDP packet #{inspect(bytes |> :binary.list_to_bin())}")
+
         {:noreply, state}
     end
   end

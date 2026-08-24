@@ -61,7 +61,7 @@ defmodule BluOSNowPlaying.LSDP do
     |> Enum.each(fn step ->
       :gen_udp.send(socket, @udp_broadcast_address, @port, packet)
       # space multiple packets progressively wider in time
-      if step < count, do: Process.sleep((step + :rand.uniform(step)) * 100)
+      if step < count, do: Process.sleep((step + :rand.uniform(step)) * 250)
     end)
 
     :gen_udp.close(socket)
