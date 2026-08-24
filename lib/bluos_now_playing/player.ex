@@ -27,7 +27,7 @@ defmodule BluOSNowPlaying.Player do
 
     initial_state =
       %{
-        player_core_state: %{},
+        player_core_state: BluOSNowPlaying.empty_state(),
         player_sync_status_raw: %{},
         player_status_raw: %{},
         player_status: @empty_player_status
@@ -134,10 +134,10 @@ defmodule BluOSNowPlaying.Player do
   @impl true
   def handle_info({:udp, _socket, ip, port, bytes}, state) do
     Logger.info(
-      "Player received UDP of #{length(bytes)} bytes from #{Utils.ip_to_string(ip)}:#{port}"
+      "Player received UDP of #{byte_size(bytes)} bytes from #{Utils.ip_to_string(ip)}:#{port}"
     )
 
-    case LSDP.try_parse_announce(bytes |> :binary.list_to_bin()) do
+    case LSDP.try_parse_announce(bytes) do
       %{} = announce ->
         Logger.info("Player received LSDP announce #{inspect(announce)}")
 
@@ -145,7 +145,7 @@ defmodule BluOSNowPlaying.Player do
 
       :error ->
         Logger.info(
-          "Player received unknown LSDP packet #{inspect(bytes |> :binary.list_to_bin())}"
+          "Player received unknown LSDP packet #{inspect(bytes)}"
         )
 
         {:noreply, state}
@@ -232,7 +232,7 @@ defmodule BluOSNowPlaying.Player do
 
         new_state = Map.put(state, :socket, socket)
 
-        Task.start(fn -> LSDP.broadcast_query(7) end)
+        Task.start(fn -> LSDP.broadcast_query(socket, 7) end)
 
         new_state
 

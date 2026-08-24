@@ -8,7 +8,7 @@ defmodule BluOSNowPlaying.LSDP do
   def port, do: @port
 
   def socket() do
-    :gen_udp.open(@port)
+    :gen_udp.open(@port, [:binary, broadcast: true])
   end
 
   def close(socket) do
@@ -53,8 +53,7 @@ defmodule BluOSNowPlaying.LSDP do
 
   @udp_broadcast_address {255, 255, 255, 255}
 
-  def broadcast_query(count \\ 1) do
-    {:ok, socket} = :gen_udp.open(0, [:binary, broadcast: true])
+  def broadcast_query(socket, count \\ 1) do
     packet = <<byte_size(header()) + 1, header()::binary, query()::binary>>
 
     1..count
@@ -64,7 +63,6 @@ defmodule BluOSNowPlaying.LSDP do
       if step < count, do: Process.sleep((step + :rand.uniform(step)) * 250)
     end)
 
-    :gen_udp.close(socket)
     packet
   end
 end

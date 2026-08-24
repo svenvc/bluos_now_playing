@@ -10,6 +10,10 @@ defmodule BluOSNowPlaying do
   @filename ".bluos_now_playing.json"
   @state_keys ~w(id name ip port)s
 
+  @empty_state %{"id" => nil, "name" => nil, "ip" => nil, "port" => API.default_port()}
+
+  def empty_state(), do: @empty_state
+
   def save_state(state) when is_map(state) do
     state
     |> Map.take(@state_keys)
@@ -28,7 +32,7 @@ defmodule BluOSNowPlaying do
       |> Map.update("ip", nil, &Utils.string_to_ip/1)
       |> Map.update("id", nil, &Base.decode16!/1)
     else
-      %{"id" => nil, "name" => nil, "ip" => nil, "port" => API.default_port()}
+      @empty_state
     end
   end
 
