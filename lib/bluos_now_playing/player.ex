@@ -82,29 +82,10 @@ defmodule BluOSNowPlaying.Player do
   end
 
   @impl true
-  def handle_call(:host_port, _from, state) do
-    Logger.info("Player call :host_port")
-    host = state.player_core_state["ip"]
-    port = state.player_core_state["port"]
-
-    host_port =
-      if host && port do
-        "#{host |> Utils.ip_to_string()}:#{port}"
-      else
-        nil
-      end
-
-    {:reply, host_port, state}
-  end
-
-  @impl true
   def handle_call(:toggle_play_pause, _from, state) do
     Logger.info("Player call :toggle_play_pause")
 
-    host = state.player_core_state["ip"]
-    port = state.player_core_state["port"]
-
-    case API.toggle_play_pause(host, port) do
+    case API.toggle_play_pause(ip(state), port(state)) do
       {:ok, play_pause_state} -> {:reply, play_pause_state, state}
       {:error, _error} -> {:reply, :error, state}
     end
@@ -163,7 +144,9 @@ defmodule BluOSNowPlaying.Player do
         {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
       :error ->
-        Logger.info("Player received unknown LSDP packet #{inspect(bytes |> :binary.list_to_bin())}")
+        Logger.info(
+          "Player received unknown LSDP packet #{inspect(bytes |> :binary.list_to_bin())}"
+        )
 
         {:noreply, state}
     end
@@ -174,6 +157,10 @@ defmodule BluOSNowPlaying.Player do
   end
 
   # Internal
+
+  def ip(state), do: state.player_core_state["ip"]
+
+  def port(state), do: state.player_core_state["port"]
 
   def maybe_load_saved_core_state(state) do
     core_state = BluOSNowPlaying.load_state()
@@ -195,7 +182,7 @@ defmodule BluOSNowPlaying.Player do
   end
 
   def load_status(state) do
-    case API.get_status(state.player_core_state["ip"]) do
+    case API.get_status(ip(state), port(state)) do
       {:ok, status} ->
         state |> update_status(status)
 
@@ -218,11 +205,7 @@ defmodule BluOSNowPlaying.Player do
   end
 
   def invoke_task_update_status_long(state) do
-    host = state.player_core_state["ip"]
-    port = state.player_core_state["port"]
-    etag = state.player_status_raw["etag"]
-
-    start_task_update_status_long(etag, host, port)
+    start_task_update_status_long(state.player_status_raw["etag"], ip(state), port(state))
 
     state
   end
@@ -277,6 +260,7 @@ defmodule BluOSNowPlaying.Player do
           Logger.info("Player :core_state unchanged")
 
           state
+          |> load_status()
         else
           Logger.info("Player new :core_state #{inspect(core_state)}")
 
@@ -303,10 +287,6 @@ defmodule BluOSNowPlaying.Player do
     GenServer.cast(__MODULE__, :stop)
   end
 
-  def host_port() do
-    GenServer.call(__MODULE__, :host_port)
-  end
-
   def status(refresh? \\ false) do
     GenServer.call(__MODULE__, {:status, refresh?})
   end
@@ -317,5 +297,21 @@ defmodule BluOSNowPlaying.Player do
 
   def toggle_play_pause() do
     GenServer.call(__MODULE__, :toggle_play_pause)
+  end
+
+  # derived API
+
+  def ip(), do: core_state()["ip"]
+
+  def port(), do: core_state()["port"]
+
+  def host_port() do
+    %{"ip" => ip, "port" => port} = core_state()
+
+    if ip && port do
+      "#{ip |> Utils.ip_to_string()}:#{port}"
+    else
+      nil
+    end
   end
 end
