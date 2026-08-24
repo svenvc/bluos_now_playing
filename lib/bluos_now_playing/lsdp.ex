@@ -3,6 +3,10 @@ defmodule BluOSNowPlaying.LSDP do
   Support for the Lenbrook Service Discovery Protocol
   """
 
+  require Logger
+
+  alias BluOSNowPlaying.Utils
+
   @port 11430
 
   def port, do: @port
@@ -51,14 +55,19 @@ defmodule BluOSNowPlaying.LSDP do
 
   def query(), do: <<5, "Q", 1, @class_all>>
 
-  @udp_broadcast_address {255, 255, 255, 255}
+  def query_packet(), do: <<byte_size(header()) + 1, header()::binary, query()::binary>>
 
   def broadcast_query(socket, count \\ 1) do
-    packet = <<byte_size(header()) + 1, header()::binary, query()::binary>>
+    packet = query_packet()
 
     1..count
     |> Enum.each(fn step ->
-      :gen_udp.send(socket, @udp_broadcast_address, @port, packet)
+      for %{broadcast: ip} <- Utils.broadcast_interfaces() do
+        Logger.info("Sending LSDP UDP query to #{inspect(ip)}")
+
+        :gen_udp.send(socket, ip, @port, packet)
+      end
+
       # space multiple packets progressively wider in time
       if step < count, do: Process.sleep((step + :rand.uniform(step)) * 250)
     end)

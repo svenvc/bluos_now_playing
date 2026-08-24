@@ -33,4 +33,32 @@ defmodule BluOSNowPlaying.Utils do
   defp format_2digits(int) when is_integer(int) and int >= 0 do
     int |> to_string() |> String.pad_leading(2, "0")
   end
+
+  def broadcast_interfaces do
+    {:ok, interfaces} = :inet.getifaddrs()
+
+    for {name, info} <- interfaces,
+        :up in Keyword.get(info, :flags, []),
+        :running in Keyword.get(info, :flags, []),
+        :broadcast in Keyword.get(info, :flags, []),
+        address <- Keyword.get_values(info, :addr),
+        ipv4?(address),
+        broadcast <- [Keyword.get(info, :broadaddr)],
+        ipv4?(broadcast) do
+      %{
+        interface: name,
+        address: address,
+        broadcast: broadcast
+      }
+    end
+  end
+
+  defp ipv4?({a, b, c, d})
+       when a in 0..255 and
+            b in 0..255 and
+            c in 0..255 and
+            d in 0..255,
+       do: true
+
+  defp ipv4?(_), do: false
 end
