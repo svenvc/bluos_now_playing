@@ -10,9 +10,9 @@ defmodule BluOSNowPlaying.Player do
   @empty_player_status %{
     player_name: "BluOS Player",
     image: "/image-not-found.png",
-    title1: "-",
-    title2: "--",
-    title3: "---",
+    title1: "",
+    title2: "",
+    title3: "",
     quality: "Q",
     format: "F",
     totlen: 0,
@@ -20,6 +20,8 @@ defmodule BluOSNowPlaying.Player do
     state_label: "STOPPED",
     secs: 0
   }
+
+  def empty_player_status(), do: @empty_player_status
 
   @impl true
   def init(init_arg) do

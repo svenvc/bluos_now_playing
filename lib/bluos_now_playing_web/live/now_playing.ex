@@ -79,18 +79,24 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
       Process.send_after(self(), :update_secs, 1000)
     end
 
-    player_status =
-      Player.status(true)
-      |> Map.update!(:image, &maybe_proxy_img/1)
-
     Player.host_port()
     |> BluOSNowPlayingWeb.ImageProxy.set_player_host_port()
 
     {:ok,
      socket
      |> assign(page_title: "BluOS • Now Playing")
-     |> assign(player_status)
+     |> assign_player_status(Player.status(true))
      |> assign_progress()}
+  end
+
+  def assign_player_status(socket, player_status) do
+    player_status_to_assign =
+      Player.empty_player_status()
+      |> Map.merge(player_status)
+      |> Map.update(:image, "/image-not-found.png", &maybe_proxy_img/1)
+
+    socket
+    |> assign(player_status_to_assign)
   end
 
   def assign_progress(socket) do
@@ -124,7 +130,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
 
     {:noreply,
      socket
-     |> assign(player_status |> Map.update(:image, "/image-not-found.png", &maybe_proxy_img/1))
+     |> assign_player_status(player_status)
      |> assign_progress()}
   end
 
