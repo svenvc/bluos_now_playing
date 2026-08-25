@@ -80,7 +80,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
     end
 
     player_status =
-      Player.status()
+      Player.status(true)
       |> Map.update!(:image, &maybe_proxy_img/1)
 
     Player.host_port()
