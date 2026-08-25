@@ -51,6 +51,20 @@ defmodule BluOSNowPlaying.LSDP do
     end
   end
 
+  def parse_query(packet) when is_binary(packet) do
+    {@magic <> <<@version>>, body} = extract_len_block(packet)
+    {<<"Q", query::binary>>, <<>>} = extract_len_block(body)
+    %{query: query}
+  end
+
+  def try_parse_query(packet) when is_binary(packet) do
+    try do
+      parse_query(packet)
+    rescue
+      _ -> :error
+    end
+  end
+
   @class_all <<255, 255>>
 
   def query(), do: <<5, "Q", 1, @class_all>>

@@ -144,7 +144,12 @@ defmodule BluOSNowPlaying.Player do
         {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
       :error ->
-        Logger.info("Player received unknown LSDP packet #{inspect(bytes)}")
+        case LSDP.try_parse_query(bytes) do
+          %{} = _query ->
+            Logger.info("Player received LSDP query")
+          :error ->
+            Logger.info("Player received unknown LSDP packet #{inspect(bytes)}")
+        end
 
         {:noreply, state}
     end
