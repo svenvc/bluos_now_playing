@@ -12,6 +12,10 @@ defmodule BluOSNowPlayingWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+
+    get "/api/player-status", BluOSNowPlayingWeb.API, :player_status
+    get "/api/player-core-state", BluOSNowPlayingWeb.API, :player_core_state
+    get "/api/player-toggle-play-pause", BluOSNowPlayingWeb.API, :player_toggle_play_pause
   end
 
   scope "/", BluOSNowPlayingWeb do
