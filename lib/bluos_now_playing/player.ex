@@ -49,7 +49,7 @@ defmodule BluOSNowPlaying.Player do
     new_state =
       state
       |> invoke_task_update_status_long()
-      |> invoke_task_discovery()
+      |> maybe_invoke_task_discovery()
 
     {:noreply, new_state}
   end
@@ -115,7 +115,7 @@ defmodule BluOSNowPlaying.Player do
   def handle_info({:update_status, new_status}, state) do
     new_state =
       if is_nil(new_status) do
-        Logger.info("Player :update_status new_status=nil")
+        Logger.info("Player :update_status no change")
 
         state
       else
@@ -244,6 +244,8 @@ defmodule BluOSNowPlaying.Player do
   end
 
   def start_task_update_status_long(_, nil, _) do
+    Logger.info("Player delaying get_status_long by 10s")
+
     Process.send_after(self(), {:update_status, nil}, 10_000)
   end
 
@@ -256,6 +258,16 @@ defmodule BluOSNowPlaying.Player do
         _ -> send(parent, {:update_status, nil})
       end
     end)
+  end
+
+  def maybe_invoke_task_discovery(state) do
+    if state.player_core_state |> BluOSNowPlaying.state_valid?() do
+      Logger.info("Player core state is valid, did not start player discovery")
+
+      state
+    else
+      invoke_task_discovery(state)
+    end
   end
 
   @number_of_broadcasts 7
