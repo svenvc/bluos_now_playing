@@ -14,6 +14,11 @@ defmodule BluOSNowPlaying do
 
   def empty_state(), do: @empty_state
 
+  def state_valid?(state) when is_map(state) do
+    state |> Enum.all?(fn {_key, value} -> value end) &&
+      @state_keys |> Enum.all?(fn key -> state |> Map.has_key?(key) end)
+  end
+
   def save_state(state) when is_map(state) do
     state
     |> Map.take(@state_keys)

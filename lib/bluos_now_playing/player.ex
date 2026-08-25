@@ -56,7 +56,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_continue(:broadcast_update_status, state) do
-    Logger.info("Player continue :broadcast_state_update")
+    Logger.info("Player continue :broadcast_update_status")
 
     Phoenix.PubSub.broadcast(
       BluOSNowPlaying.PubSub,
@@ -82,6 +82,13 @@ defmodule BluOSNowPlaying.Player do
   end
 
   @impl true
+  def handle_call(:core_state, _from, state) do
+    Logger.info("Player call :core_state")
+
+    {:reply, state.player_core_state, state}
+  end
+
+  @impl true
   def handle_call(:toggle_play_pause, _from, state) do
     Logger.info("Player call :toggle_play_pause")
 
@@ -89,13 +96,6 @@ defmodule BluOSNowPlaying.Player do
       {:ok, play_pause_state} -> {:reply, play_pause_state, state}
       {:error, _error} -> {:reply, :error, state}
     end
-  end
-
-  @impl true
-  def handle_call(:core_state, _from, state) do
-    Logger.info("Player call :core_state")
-
-    {:reply, state.player_core_state, state}
   end
 
   @impl true
@@ -144,12 +144,40 @@ defmodule BluOSNowPlaying.Player do
         {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
       :error ->
-        Logger.info(
-          "Player received unknown LSDP packet #{inspect(bytes)}"
-        )
+        Logger.info("Player received unknown LSDP packet #{inspect(bytes)}")
 
         {:noreply, state}
     end
+  end
+
+  @impl true
+  def handle_info(:broadcast_query, state) do
+    Logger.info("Player :broadcast_query")
+
+    if state.player_core_state |> BluOSNowPlaying.state_valid?() do
+      Logger.info("Player core state is valid, not sending broadcast query")
+    else
+      LSDP.broadcast_query(state.socket)
+    end
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(:end_discovery, state) do
+    Logger.info("Player :end_discovery")
+
+    LSDP.close(state.socket)
+
+    Logger.info("Player no longer listening for LSDP UDP broadcasts")
+
+    if state.player_core_state |> BluOSNowPlaying.state_valid?() do
+      Logger.info("Player core state is valid")
+    else
+      Logger.info("Player discovery failed")
+    end
+
+    {:noreply, state |> Map.delete(:socket)}
   end
 
   def start_link(opts) do
@@ -225,14 +253,26 @@ defmodule BluOSNowPlaying.Player do
     end)
   end
 
+  @number_of_broadcasts 7
+
   def invoke_task_discovery(state) do
     case LSDP.socket() do
       {:ok, socket} ->
         Logger.info("Player listening for LSDP UDP broadcasts")
 
+        parent = self()
         new_state = Map.put(state, :socket, socket)
 
-        Task.start(fn -> LSDP.broadcast_query(socket, 7) end)
+        Task.start(fn ->
+          1..@number_of_broadcasts
+          |> Enum.each(fn step ->
+            send(parent, :broadcast_query)
+            # space multiple packets progressively wider in time
+            Process.sleep((step + :rand.uniform(step)) * 250)
+          end)
+
+          send(parent, :end_discovery)
+        end)
 
         new_state
 
@@ -313,5 +353,9 @@ defmodule BluOSNowPlaying.Player do
     else
       nil
     end
+  end
+
+  def has_core_state?() do
+    core_state() |> BluOSNowPlaying.state_valid?()
   end
 end

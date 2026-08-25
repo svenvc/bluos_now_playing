@@ -57,39 +57,14 @@ defmodule BluOSNowPlaying.LSDP do
 
   def query_packet(), do: <<byte_size(header()) + 1, header()::binary, query()::binary>>
 
-  def broadcast_query(socket, count \\ 1) do
+  def broadcast_query(socket) do
     packet = query_packet()
 
-    # for %{interface: interface, address: address, broadcast: broadcast} <-
-    #       Utils.broadcast_interfaces() do
-    #   IO.inspect(
-    #     %{interface: interface, address: address, broadcast: broadcast},
-    #     label: "Sending LSDP discovery"
-    #   )
+    for %{broadcast: ip} <- Utils.broadcast_interfaces() do
+      Logger.info("Sending LSDP UDP query to #{inspect(ip)}")
 
-    #   {:ok, socket} =
-    #     :gen_udp.open(0, [
-    #       :binary,
-    #       {:ip, address},
-    #       {:broadcast, true}
-    #     ])
-
-    #   :ok = :gen_udp.send(socket, broadcast, 11_430, packet)
-
-    #   :gen_udp.close(socket)
-    # end
-
-    1..count
-    |> Enum.each(fn step ->
-      for %{broadcast: ip} <- Utils.broadcast_interfaces() do
-        Logger.info("Sending LSDP UDP query to #{inspect(ip)}")
-
-        :gen_udp.send(socket, ip, @port, packet)
-      end
-
-      # space multiple packets progressively wider in time
-      if step < count, do: Process.sleep((step + :rand.uniform(step)) * 250)
-    end)
+      :gen_udp.send(socket, ip, @port, packet)
+    end
 
     packet
   end
