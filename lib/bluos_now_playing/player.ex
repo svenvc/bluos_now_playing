@@ -39,6 +39,7 @@ defmodule BluOSNowPlaying.Player do
       case init_arg do
         :saved -> initial_state |> maybe_load_saved_core_state()
         :none -> initial_state
+        {:ip, ip} -> initial_state |> maybe_use_ip(ip)
       end
 
     {:ok, initial_state, {:continue, :start}}
@@ -149,6 +150,7 @@ defmodule BluOSNowPlaying.Player do
         case LSDP.try_parse_query(bytes) do
           %{} = _query ->
             Logger.info("Player received LSDP query")
+
           :error ->
             Logger.info("Player received unknown LSDP packet #{inspect(bytes)}")
         end
@@ -188,7 +190,18 @@ defmodule BluOSNowPlaying.Player do
   end
 
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts[:init_arg] || :saved, name: opts[:name] || __MODULE__)
+    env_player_ip = env_player_ip()
+
+    init_arg =
+      if env_player_ip do
+        {:ip, env_player_ip}
+      else
+        opts[:init_arg] || :saved
+      end
+
+    name = opts[:name] || __MODULE__
+
+    GenServer.start_link(__MODULE__, init_arg, name: name)
   end
 
   # Internal
@@ -237,6 +250,31 @@ defmodule BluOSNowPlaying.Player do
     state
     |> Map.put(:player_status_raw, status)
     |> Map.put(:player_status, processed_status)
+  end
+
+  def maybe_use_ip(state, ip) do
+    case API.get_sync_status(ip) do
+      {:ok, sync_status} ->
+        Logger.info("Player successfully resolved #{Utils.ip_to_string(ip)}")
+
+        core_state =
+          state.player_core_state
+          |> Map.put("ip", ip)
+          |> Map.put("name", sync_status["name"])
+          |> Map.put("id", extract_id(sync_status))
+
+        BluOSNowPlaying.save_state(core_state)
+
+        state
+        |> Map.put(:player_core_state, core_state)
+        |> Map.put(:player_sync_status_raw, sync_status)
+        |> load_status()
+
+      _ ->
+        Logger.info("Player failed to resolved #{Utils.ip_to_string(ip)}")
+
+        state
+    end
   end
 
   def invoke_task_update_status_long(state) do
@@ -333,6 +371,24 @@ defmodule BluOSNowPlaying.Player do
 
       _ ->
         state
+    end
+  end
+
+  @bluos_player_ip_key "BLUOS_PLAYER_IP"
+
+  def env_player_ip() do
+    try do
+      System.get_env(@bluos_player_ip_key) |> Utils.string_to_ip()
+    rescue
+      _ -> nil
+    end
+  end
+
+  def extract_id(sync_status) do
+    try do
+      sync_status |> Map.get("mac") |> String.split(":") |> Enum.join() |> Base.decode16!()
+    rescue
+      _ -> sync_status |> Map.get("id")
     end
   end
 
