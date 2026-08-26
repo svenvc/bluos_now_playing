@@ -444,7 +444,7 @@ defmodule BluOSNowPlaying.Player do
     total = Utils.format_time(totlen)
 
     """
-    #{status[:title1]} • #{status[:title2]} • #{status[:title2]}
+    #{status[:title1]} • #{status[:title2]} • #{status[:title3]}
     #{status[:quality]} • #{status[:format]} • #{status[:player_name]} • #{status[:state_label]}
     #{secs}/#{totlen} • #{current}/#{total} • -#{remaining} • #{progress}%
     """
