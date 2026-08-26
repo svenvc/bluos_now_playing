@@ -39,7 +39,7 @@ defmodule BluOSNowPlaying.API do
     end
   end
 
-  @default_timeout 100
+  @default_timeout 60
 
   def get_status_long(etag, host, port \\ @default_port)
 
