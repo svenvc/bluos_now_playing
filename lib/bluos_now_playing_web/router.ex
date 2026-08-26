@@ -22,8 +22,7 @@ defmodule BluOSNowPlayingWeb.Router do
   scope "/", BluOSNowPlayingWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
-
+    live "/", NowPlaying
     live "/now-playing", NowPlaying
 
     get "/proxy-img", ImageProxy, :proxy_img
