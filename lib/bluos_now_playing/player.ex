@@ -433,4 +433,24 @@ defmodule BluOSNowPlaying.Player do
   def has_core_state?() do
     core_state() |> BluOSNowPlaying.state_valid?()
   end
+
+  def status_text(refresh? \\ false) do
+    status = status(refresh?)
+    secs = status[:secs]
+    totlen = status[:totlen]
+    progress = Float.round(if(totlen == 0, do: 0.0, else: secs / totlen * 100), 1)
+    current = Utils.format_time(secs)
+    remaining = Utils.format_time(totlen - secs)
+    total = Utils.format_time(totlen)
+
+    """
+    #{status[:title1]} • #{status[:title2]} • #{status[:title2]}
+    #{status[:quality]} • #{status[:format]} • #{status[:player_name]} • #{status[:state_label]}
+    #{secs}/#{totlen} • #{current}/#{total} • -#{remaining} • #{progress}%
+    """
+  end
+
+  def print_status(refresh? \\ false) do
+    IO.puts(status_text(refresh?))
+  end
 end

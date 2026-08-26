@@ -14,10 +14,15 @@ defmodule BluOSNowPlayingWeb.API do
       description: "the status of the BluOS player, add refresh=true for up to date info"
     },
     %{
+      uri: "/api/player-status-text",
+      description: "the status of the BluOS player, add refresh=true for up to date info"
+    },
+    %{
       uri: "/api/player-toggle-play-pause",
       description: "action to toggle the player play-pause state"
     }
   ]
+
   def root(conn, _params) do
     json(conn, @root)
   end
@@ -26,6 +31,12 @@ defmodule BluOSNowPlayingWeb.API do
     refresh? = Map.get(params, "refresh", "false") == "true"
 
     json(conn, Player.status(refresh?))
+  end
+
+  def player_status_text(conn, params) do
+    refresh? = Map.get(params, "refresh", "false") == "true"
+
+    text(conn, Player.status_text(refresh?))
   end
 
   def player_core_state(conn, _params) do
