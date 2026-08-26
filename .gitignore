@@ -36,3 +36,5 @@ npm-debug.log
 /assets/node_modules/
 
 .bluos_now_playing.json
+.env
+
