@@ -14,6 +14,10 @@ defmodule BluOSNowPlayingWeb.API do
       description: "the status of the BluOS player, add refresh=true for up to date info"
     },
     %{
+      uri: "/api/player-status-updates",
+      description: "an SSE stream of updates of the status of the BluOS player"
+    },
+    %{
       uri: "/api/player-status-text",
       description: "the status of the BluOS player, add refresh=true for up to date info"
     },
@@ -50,5 +54,42 @@ defmodule BluOSNowPlayingWeb.API do
 
   def player_toggle_play_pause(conn, _params) do
     json(conn, Player.toggle_play_pause())
+  end
+
+  def player_status_updates(conn, _params) do
+    Phoenix.PubSub.subscribe(BluOSNowPlaying.PubSub, "player")
+
+    conn =
+      conn
+      |> put_resp_content_type("text/event-stream")
+      |> put_resp_header("cache-control", "no-cache")
+      |> put_resp_header("x-accel-buffering", "no")
+      |> send_chunked(200)
+
+    loop(conn)
+  end
+
+  @heartbeat_ms 60_000
+
+  defp loop(conn) do
+    receive do
+      {:update_status, player_status} ->
+        case chunk(conn, "data: #{JSON.encode!(player_status)}\n\n") do
+          {:ok, conn} ->
+            loop(conn)
+
+          {:error, :closed} ->
+            conn
+        end
+    after
+      @heartbeat_ms ->
+        case chunk(conn, ": heartbeat\n\n") do
+          {:ok, conn} ->
+            loop(conn)
+
+          {:error, :closed} ->
+            conn
+        end
+    end
   end
 end
