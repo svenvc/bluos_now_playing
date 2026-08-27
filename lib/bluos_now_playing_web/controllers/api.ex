@@ -69,7 +69,7 @@ defmodule BluOSNowPlayingWeb.API do
     loop(conn)
   end
 
-  @heartbeat_ms 60_000
+  @heartbeat_ms 30_000
 
   defp loop(conn) do
     receive do
