@@ -6,6 +6,15 @@ to access the necessary data for a 'now playing' status.
 This web application connects to a BluOS player on your network
 and offers a page show a now playing screen.
 
+![The BluOS Now Playing screen](screenshot.png)
+
+The HTML page has no interactive UI, it is passive.
+There is just one feature: you can toggle play-pause by clicking on the cover art image or on the status label.
+
+## API
+
+There is a small REST API, under http://localhost:4000/api
+
 ## References
 
 * https://www.bluesound.com
