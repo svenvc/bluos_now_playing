@@ -55,9 +55,9 @@ defmodule BluOSNowPlaying.Utils do
 
   defp ipv4?({a, b, c, d})
        when a in 0..255 and
-            b in 0..255 and
-            c in 0..255 and
-            d in 0..255,
+              b in 0..255 and
+              c in 0..255 and
+              d in 0..255,
        do: true
 
   defp ipv4?(_), do: false
