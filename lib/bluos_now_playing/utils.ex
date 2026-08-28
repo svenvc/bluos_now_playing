@@ -34,6 +34,12 @@ defmodule BluOSNowPlaying.Utils do
     int |> to_string() |> String.pad_leading(2, "0")
   end
 
+  defp format_2digits(int) when is_integer(int) and int < 0 do
+    format_2digits(abs(int))
+  end
+
+  defp format_2digits(_), do: ""
+
   def broadcast_interfaces do
     {:ok, interfaces} = :inet.getifaddrs()
 
