@@ -4,16 +4,76 @@ BluOSNowPlaying interfaces with a BluOS (Bluesound) player
 to access the necessary data for a 'now playing' status.
 
 This web application connects to a BluOS player on your network
-and offers a page show a now playing screen.
+and offers a page showing a now playing screen.
 
 ![The BluOS Now Playing screen](screenshot.png)
 
 The HTML page has no interactive UI, it is passive.
+The goal is to show this page on any screen that can show a local web page.
 There is just one feature: you can toggle play-pause by clicking on the cover art image or on the status label.
+
+A single player on your network will be discovered and used automatically.
+If this does not work, you can try setting the environment variable BLUOS_PLAYER_IP to an IPv4 address like 192.168.178.95 to force the use of that player.
+Once discovered or set, a config file `.bluos_now_playing.json` with the core connection state will be written in the current directory and used afterwards as long as the player remains reacheable.
+
 
 ## API
 
 There is a small REST API, under http://localhost:4000/api
+
+```
+$ curl -s http://localhost:4000/api/player-core-state | jq .
+{
+  "id": "905682B71FEC",
+  "ip": "192.168.178.95",
+  "name": "NODE NANO",
+  "port": 11000
+}
+
+$ curl -s http://localhost:4000/api/player-status | jq .    
+{
+  "state": "play",
+  "format": "FLAC 16/44.1",
+  "image": "/Artwork?service=Qobuz&songid=Qobuz%3A4619954",
+  "secs": 59,
+  "totlen": 304,
+  "title1": "Love Song",
+  "title2": "Simple Minds",
+  "title3": "Sons And Fascination/Sister Feelings Call",
+  "quality": "CD",
+  "player_name": "NODE NANO",
+  "state_label": "PLAYING"
+}
+
+$ curl http://localhost:4000/api/player-status-text      
+Love Song • Simple Minds • Sons And Fascination/Sister Feelings Call
+CD • FLAC 16/44.1 • NODE NANO • PLAYING
+119/304 • 01:59/05:04 • -03:05 • 39.1%
+
+$ curl -N http://localhost:4000/api/player-status-updates
+: heartbeat
+
+data: {"state":"play","format":"FLAC 16/44.1","image":"/Artwork?service=Qobuz&songid=Qobuz%3A4619954","secs":180,"totlen":304,"title1":"Love Song","title2":"Simple Minds","title3":"Sons And Fascination/Sister Feelings Call","quality":"CD","player_name":"NODE NANO","state_label":"PLAYING"}
+
+: heartbeat
+
+data: {"state":"play","format":"FLAC 16/44.1","image":"/Artwork?service=Qobuz&songid=Qobuz%3A4619954","secs":240,"totlen":304,"title1":"Love Song","title2":"Simple Minds","title3":"Sons And Fascination/Sister Feelings Call","quality":"CD","player_name":"NODE NANO","state_label":"PLAYING"}
+
+: heartbeat
+
+data: {"state":"play","format":"FLAC 16/44.1","image":"/Artwork?service=Qobuz&songid=Qobuz%3A4619954","secs":300,"totlen":304,"title1":"Love Song","title2":"Simple Minds","title3":"Sons And Fascination/Sister Feelings Call","quality":"CD","player_name":"NODE NANO","state_label":"PLAYING"}
+
+data: {"state":"play","format":"FLAC 16/44.1","image":"/Artwork?service=Qobuz&songid=Qobuz%3A4673980","secs":0,"totlen":267,"title1":"Promised You A Miracle","title2":"Simple Minds","title3":"New Gold Dream (81/82/83/84)","quality":"CD","player_name":"NODE NANO","state_label":"PLAYING"}
+
+: heartbeat
+
+data: {"state":"play","format":"FLAC 16/44.1","image":"/Artwork?service=Qobuz&songid=Qobuz%3A4673980","secs":59,"totlen":267,"title1":"Promised You A Miracle","title2":"Simple Minds","title3":"New Gold Dream (81/82/83/84)","quality":"CD","player_name":"NODE NANO","state_label":"PLAYING"}
+
+data: {"state":"pause","format":"FLAC 16/44.1","image":"/Artwork?service=Qobuz&songid=Qobuz%3A4673980","secs":88,"totlen":267,"title1":"Promised You A Miracle","title2":"Simple Minds","title3":"New Gold Dream (81/82/83/84)","quality":"CD","player_name":"NODE NANO","state_label":"PAUSED"}
+```
+
+The status updates arrive every 60 seconds or faster when a new track starts (the 4th update) or when the state changes (the last update). In between there can be heartbeats. Note that seconds advancing while playing are *not* reported as updates, you will have to do that yourself.
+
 
 ## References
 
@@ -26,7 +86,10 @@ The main technical reference is the `BluOS Custom Integration API` version 1.7 w
 the HTTP REST API to interact with a player as well as the Lenbrook Service Discovery Protocol (LSDP)
 to discover players on the network.
 
+
 ## Getting started
+
+This is an Elixir Phoenix project, you'll have to install Elixir, which will depend on Erlang and its BEAM runtime.
 
 To start your Phoenix server:
 
