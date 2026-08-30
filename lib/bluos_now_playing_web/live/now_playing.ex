@@ -40,14 +40,13 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
             {@title3}
           </p>
           <!-- Technical information -->
-          <div class="flex justify-center items-center gap-3 mt-2 text-xs text-white/25">
-            <span>{@quality}</span>
-            <span>•</span>
-            <span>{@format}</span>
-            <span>•</span>
-            <span>{@player_name}</span>
-            <span>•</span>
-            <span phx-click="toggle-play-pause">{@state_label}</span>
+          <div
+            class="flex justify-center items-center gap-3 mt-2 text-xs text-white/25"
+            phx-click="toggle-play-pause"
+          >
+            {[@quality, @format, @player_name, @state_label]
+            |> Enum.filter(fn x -> x end)
+            |> Enum.join(" • ")}
           </div>
           <!-- Progress -->
           <div class="w-full mt-3 pb-1 font-mono">

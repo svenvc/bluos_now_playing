@@ -10,11 +10,11 @@ defmodule BluOSNowPlaying.Player do
   @empty_player_status %{
     player_name: "BluOS Player",
     image: "/image-not-found.png",
-    title1: "",
-    title2: "",
-    title3: "",
-    quality: "Q",
-    format: "F",
+    title1: nil,
+    title2: nil,
+    title3: nil,
+    quality: nil,
+    format: nil,
     totlen: 0,
     state: "stop",
     state_label: "STOPPED",
@@ -444,8 +444,8 @@ defmodule BluOSNowPlaying.Player do
     total = Utils.format_time(totlen)
 
     """
-    #{status[:title1]} • #{status[:title2]} • #{status[:title3]}
-    #{status[:quality]} • #{status[:format]} • #{status[:player_name]} • #{status[:state_label]}
+    #{[:title1, :title2, :title3] |> Enum.map(fn k -> status[k] end) |> Enum.filter(fn x -> x end) |> Enum.join(" • ")}
+    #{[:quality, :format, :player_name, :state_label] |> Enum.map(fn k -> status[k] end) |> Enum.filter(fn x -> x end) |> Enum.join(" • ")}
     #{secs}/#{totlen} • #{current}/#{total} • -#{remaining} • #{progress}%
     """
   end
