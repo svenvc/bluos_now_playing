@@ -40,6 +40,10 @@ defmodule BluOSNowPlaying.Utils do
 
   defp format_2digits(_), do: ""
 
+  def join_not_nil(enumerable, joiner) do
+    enumerable |> Enum.filter(fn x -> x end) |> Enum.join(joiner)
+  end
+
   def broadcast_interfaces do
     {:ok, interfaces} = :inet.getifaddrs()
 

@@ -444,8 +444,8 @@ defmodule BluOSNowPlaying.Player do
     total = Utils.format_time(totlen)
 
     """
-    #{[:title1, :title2, :title3] |> Enum.map(fn k -> status[k] end) |> Enum.filter(fn x -> x end) |> Enum.join(" • ")}
-    #{[:quality, :format, :player_name, :state_label] |> Enum.map(fn k -> status[k] end) |> Enum.filter(fn x -> x end) |> Enum.join(" • ")}
+    #{[:title1, :title2, :title3] |> Enum.map(fn k -> status[k] end) |> Utils.join_not_nil(" • ")}
+    #{[:quality, :format, :player_name, :state_label] |> Enum.map(fn k -> status[k] end) |> Utils.join_not_nil(" • ")}
     #{secs}/#{totlen} • #{current}/#{total} • -#{remaining} • #{progress}%
     """
   end

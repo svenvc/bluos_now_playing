@@ -44,9 +44,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
             class="flex justify-center items-center gap-3 mt-2 text-xs text-white/25"
             phx-click="toggle-play-pause"
           >
-            {[@quality, @format, @player_name, @state_label]
-            |> Enum.filter(fn x -> x end)
-            |> Enum.join(" • ")}
+            {[@quality, @format, @player_name, @state_label] |> Utils.join_not_nil(" • ")}
           </div>
           <!-- Progress -->
           <div class="w-full mt-3 pb-1 font-mono">
