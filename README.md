@@ -3,10 +3,10 @@
 BluOSNowPlaying interfaces with a BluOS (Bluesound) player
 to access the necessary data for a 'now playing' status.
 
+![The BluOS Now Playing screen](screenshot.png)
+
 This web application connects to a BluOS player on your network
 and offers a page showing a now playing screen.
-
-![The BluOS Now Playing screen](screenshot.png)
 
 The HTML page has no interactive UI, it is passive.
 The goal is to show this page on any screen that can show a local web page.
@@ -19,9 +19,67 @@ Once discovered or set, a config file `.bluos_now_playing.json` with the core co
 
 ## API
 
-There is a small REST API, under http://localhost:4000/api
+At the Elixir level, the configured or discovered player is a well known GenServer called Player.
+It has a simple API and broadcasts `{:status_update, <new-status>}` on the `player` PubSub topic.
 
+``` elixir
+iex(4)> BluOSNowPlaying.Player.core_state
+%{
+  "id" => <<144, 86, 130, 183, 31, 236>>,
+  "ip" => {192, 168, 178, 95},
+  "name" => "NODE NANO",
+  "port" => 11000
+}
+
+iex(5)> BluOSNowPlaying.Player.status
+%{
+  state: "stream",
+  format: "FLAC 24/44.1",
+  image: "https://static.qobuz.com/images/covers/09/31/0075679893109_600.jpg",
+  secs: 12,
+  totlen: 671,
+  player_name: "NODE NANO",
+  quality: "HD",
+  state_label: "PLAYING",
+  title1: "Thinking of a Place",
+  title2: "The War On Drugs",
+  title3: "A Deeper Understanding"
+}
+
+iex(6)> BluOSNowPlaying.Player.status_text
+"Thinking of a Place • The War On Drugs • A Deeper Understanding\nHD • FLAC 24/44.1 • NODE NANO • PLAYING\n60/671 • 01:00/11:11 • -10:11 • 8.9%\n"
+
+iex(7)> BluOSNowPlaying.Player.print_status
+Thinking of a Place • The War On Drugs • A Deeper Understanding
+HD • FLAC 24/44.1 • NODE NANO • PLAYING
+60/671 • 01:00/11:11 • -10:11 • 8.9%
+
+:ok
+
+iex(8)> Phoenix.PubSub.subscribe(BluOSNowPlaying.PubSub, "player")
+:ok
+
+iex(9)> flush
+{:update_status,
+ %{
+   state: "stream",
+   format: "FLAC 24/44.1",
+   image: "https://static.qobuz.com/images/covers/09/31/0075679893109_600.jpg",
+   secs: 240,
+   totlen: 671,
+   player_name: "NODE NANO",
+   quality: "HD",
+   state_label: "PLAYING",
+   title1: "Thinking of a Place",
+   title2: "The War On Drugs",
+   title3: "A Deeper Understanding"
+ }}
+:ok
 ```
+
+There is also a small REST API, under http://localhost:4000/api
+
+```bash
 $ curl -s http://localhost:4000/api/player-core-state | jq .
 {
   "id": "905682B71FEC",
