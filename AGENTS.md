@@ -4,6 +4,8 @@ This is a web application written using the Phoenix web framework.
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
+- Tests for library modules under `lib/bluos_now_playing/` go in `test/bluos_now_playing/` mirroring the module file name (e.g. `test/bluos_now_playing/utils_test.exs`) using plain `ExUnit.Case, async: true`. Web tests stay under `test/bluos_now_playing_web/`. Run the targeted file (`mix test test/bluos_now_playing/utils_test.exs`) before the full `mix precommit`.
+- The stock Phoenix auth guidance in the usage-rules block below (`live_session`, `current_scope`, authenticated routes) is boilerplate and does **not** apply to this app: it has no authentication and no `live_session` blocks
 
 ### Phoenix v1.8 guidelines
 
@@ -43,6 +45,12 @@ custom classes must fully style the input
 - Ensure **clean typography, spacing, and layout balance** for a refined, premium look
 - Focus on **delightful details** like hover effects, loading states, and smooth page transitions
 
+## Application architecture
+
+- `BluOSNowPlaying.Player` is the named GenServer owning all player state. It broadcasts `{:update_status, <status>}` on `BluOSNowPlaying.PubSub`, topic `"player"`. The Now Playing LiveView and the `/api/player-status-updates` SSE endpoint subscribe to that topic.
+- The Now Playing LiveView renders a standalone full-screen template without `<Layouts.app>`, deliberately deviating from the stock `<Layouts.app>`/`flash_group` boilerplate (unused scaffolding here). Do not wrap it.
+- Relative artwork URLs returned by the player must be proxied: call `BluOSNowPlayingWeb.ImageProxy.set_player_host_port(Player.host_port())` so `/proxy-img` can resolve them (the LiveView mount already does this).
+- Players are discovered via LSDP UDP broadcasts, or forced with the `BLUOS_PLAYER_IP` env var; the discovered/set core state persists to `.bluos_now_playing.json`.
 
 <!-- usage-rules-start -->
 
