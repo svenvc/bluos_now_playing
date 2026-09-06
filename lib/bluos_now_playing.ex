@@ -41,7 +41,7 @@ defmodule BluOSNowPlaying do
     end
   end
 
-  def is_player_up?(state) when is_map(state) do
+  def player_up?(state) when is_map(state) do
     case API.get_sync_status(state["ip"], state["port"]) do
       {:ok, sync_state} ->
         state["name"] == sync_state["name"]
