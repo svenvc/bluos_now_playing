@@ -294,8 +294,17 @@ defmodule BluOSNowPlaying.Player do
 
     Task.start(fn ->
       case API.get_status_long(etag, host, port) do
-        {:ok, status} -> send(parent, {:update_status, status})
-        _ -> send(parent, {:update_status, nil})
+        {:ok, status} ->
+          send(parent, {:update_status, status})
+
+        {:error, error} ->
+          sleep = :rand.uniform(10)
+
+          Logger.info(
+            "Player get_status_long failed with #{inspect(error)} backing off for #{sleep}s"
+          )
+
+          Process.send_after(parent, {:update_status, nil}, sleep * 1000)
       end
     end)
   end
