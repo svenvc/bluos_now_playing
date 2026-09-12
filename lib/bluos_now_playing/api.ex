@@ -21,7 +21,7 @@ defmodule BluOSNowPlaying.API do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/Status"
 
-    Logger.info("GET #{url}")
+    Logger.debug("GET #{url}")
 
     case Req.get(url) do
       {:ok,
@@ -49,7 +49,7 @@ defmodule BluOSNowPlaying.API do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/Status?etag=#{etag}&timeout=#{@default_timeout}"
 
-    Logger.info("GET #{url}")
+    Logger.debug("GET #{url}")
 
     case Req.get(url,
            receive_timeout: (@default_timeout + 5) * 1000
@@ -77,7 +77,7 @@ defmodule BluOSNowPlaying.API do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/SyncStatus"
 
-    Logger.info("GET #{url}")
+    Logger.debug("GET #{url}")
 
     case Req.get(url,
            connect_options: [timeout: 250],
@@ -107,7 +107,7 @@ defmodule BluOSNowPlaying.API do
     hostname = host |> Utils.ip_to_string()
     url = "http://#{hostname}:#{port}/Pause?toggle=1"
 
-    Logger.info("GET #{url}")
+    Logger.debug("GET #{url}")
 
     case Req.get(url) do
       {:ok,

@@ -25,7 +25,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def init(init_arg) do
-    Logger.info("Player init #{inspect(init_arg)}")
+    Logger.debug("Player init #{inspect(init_arg)}")
 
     initial_state =
       %{
@@ -47,7 +47,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_continue(:start, state) do
-    Logger.info("Player continue :start")
+    Logger.debug("Player continue :start")
 
     new_state =
       state
@@ -59,7 +59,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_continue(:broadcast_update_status, state) do
-    Logger.info("Player continue :broadcast_update_status")
+    Logger.debug("Player continue :broadcast_update_status")
 
     Phoenix.PubSub.broadcast(
       BluOSNowPlaying.PubSub,
@@ -72,7 +72,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_call({:status, refresh?}, _from, state) do
-    Logger.info("Player call :status refresh?=#{refresh?}")
+    Logger.debug("Player call :status refresh?=#{refresh?}")
 
     new_state =
       if refresh? do
@@ -86,14 +86,14 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_call(:core_state, _from, state) do
-    Logger.info("Player call :core_state")
+    Logger.debug("Player call :core_state")
 
     {:reply, state.player_core_state, state}
   end
 
   @impl true
   def handle_call(:toggle_play_pause, _from, state) do
-    Logger.info("Player call :toggle_play_pause")
+    Logger.debug("Player call :toggle_play_pause")
 
     case API.toggle_play_pause(ip(state), port(state)) do
       {:ok, play_pause_state} -> {:reply, play_pause_state, state}
@@ -103,13 +103,13 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_cast(:stop, state) do
-    Logger.info("Player :stop")
+    Logger.debug("Player :stop")
     {:stop, :normal, state}
   end
 
   @impl true
   def terminate(reason, _state) do
-    Logger.info("Player stopped #{inspect(reason)}")
+    Logger.debug("Player stopped #{inspect(reason)}")
   end
 
   @minimal_fields ~w(state secs totlen etag)
@@ -136,7 +136,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_info({:udp, _socket, ip, port, bytes}, state) do
-    Logger.info(
+    Logger.debug(
       "Player received UDP of #{byte_size(bytes)} bytes from #{Utils.ip_to_string(ip)}:#{port}"
     )
 
@@ -149,10 +149,10 @@ defmodule BluOSNowPlaying.Player do
       :error ->
         case LSDP.try_parse_query(bytes) do
           %{} = _query ->
-            Logger.info("Player received LSDP query")
+            Logger.notice("Player received LSDP query")
 
           :error ->
-            Logger.info("Player received unknown LSDP packet #{inspect(bytes)}")
+            Logger.notice("Player received unknown LSDP packet #{inspect(bytes)}")
         end
 
         {:noreply, state}
@@ -161,7 +161,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_info(:broadcast_query, state) do
-    Logger.info("Player :broadcast_query")
+    Logger.debug("Player :broadcast_query")
 
     if state.player_core_state |> BluOSNowPlaying.state_valid?() do
       Logger.info("Player core state is valid, not sending broadcast query")
@@ -174,7 +174,7 @@ defmodule BluOSNowPlaying.Player do
 
   @impl true
   def handle_info(:end_discovery, state) do
-    Logger.info("Player :end_discovery")
+    Logger.debug("Player :end_discovery")
 
     LSDP.close(state.socket)
 
@@ -271,7 +271,7 @@ defmodule BluOSNowPlaying.Player do
         |> load_status()
 
       _ ->
-        Logger.info("Player failed to resolved #{Utils.ip_to_string(ip)}")
+        Logger.error("Player failed to resolved #{Utils.ip_to_string(ip)}")
 
         state
     end
@@ -324,7 +324,7 @@ defmodule BluOSNowPlaying.Player do
   def invoke_task_discovery(state) do
     case LSDP.socket() do
       {:ok, socket} ->
-        Logger.info("Player listening for LSDP UDP broadcasts")
+        Logger.debug("Player listening for LSDP UDP broadcasts")
 
         parent = self()
         new_state = Map.put(state, :socket, socket)
@@ -343,7 +343,7 @@ defmodule BluOSNowPlaying.Player do
         new_state
 
       _ ->
-        Logger.info("Player failed to open LSDP UDP socket, in use ?")
+        Logger.error("Player failed to open LSDP UDP socket, in use ?")
 
         state
     end

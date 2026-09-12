@@ -123,7 +123,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
 
   @impl true
   def handle_info({:update_status, player_status}, socket) do
-    Logger.info("NowPlaying :update_status #{inspect(player_status)}")
+    Logger.debug("NowPlaying :update_status #{inspect(player_status)}")
 
     {:noreply,
      socket
@@ -133,7 +133,7 @@ defmodule BluOSNowPlayingWeb.NowPlaying do
 
   @impl true
   def handle_event("toggle-play-pause", _payload, socket) do
-    Logger.info("NowPlaying toggle-play-pause")
+    Logger.debug("NowPlaying toggle-play-pause")
 
     Player.toggle_play_pause()
 
