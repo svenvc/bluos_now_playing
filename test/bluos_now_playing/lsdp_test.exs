@@ -19,6 +19,20 @@ defmodule BluOSNowPlaying.LSDPTest do
     test "reads a length-prefixed block not counting the length byte with false" do
       assert LSDP.extract_len_block(<<3, "abc", "rest">>, false) == {"abc", "rest"}
     end
+
+    test "reads an empty block when length is 1 (include_len? true)" do
+      assert LSDP.extract_len_block(<<1, "rest">>) == {"", "rest"}
+    end
+
+    test "reads an empty block when length is 0 (include_len? false)" do
+      assert LSDP.extract_len_block(<<0, "rest">>, false) == {"", "rest"}
+    end
+
+    test "raises on truncated input" do
+      assert_raise MatchError, fn ->
+        LSDP.extract_len_block(<<5, "ab">>)
+      end
+    end
   end
 
   describe "query/0" do
@@ -26,6 +40,10 @@ defmodule BluOSNowPlaying.LSDPTest do
       assert <<len, payload::binary>> = LSDP.query()
       assert len == byte_size(payload) + 1
       assert byte_size(payload) == 4
+    end
+
+    test "contains version 1 and class 0xFFFF" do
+      <<_len, "Q", 1, 255, 255>> = LSDP.query()
     end
   end
 
@@ -35,23 +53,50 @@ defmodule BluOSNowPlaying.LSDPTest do
       assert len == byte_size(LSDP.header()) + 1
     end
 
+    test "starts with the LSDP header after the length byte" do
+      <<_len, header::binary-size(5), _rest::binary>> = LSDP.query_packet()
+      assert header == LSDP.header()
+    end
+
     test "round-trips through parse_query" do
       assert LSDP.try_parse_query(LSDP.query_packet()) == %{query: <<1, 255, 255>>}
     end
+  end
+
+  defp build_announce_packet(id, ip) do
+    ip_binary = ip |> Tuple.to_list() |> Enum.map(&<<&1>>) |> IO.iodata_to_binary()
+    announce = "A" <> <<byte_size(id)>> <> id <> <<byte_size(ip_binary)>> <> ip_binary
+    body = <<byte_size(announce) + 1, announce::binary>>
+    header = LSDP.header()
+    <<byte_size(header) + 1, header::binary, body::binary>>
   end
 
   describe "parse_announce/1" do
     test "parses a packet built with the module's framing" do
       id = "0123456789AB"
       ip = {192, 168, 178, 95}
-      ip_binary = ip |> Tuple.to_list() |> Enum.map(&<<&1>>) |> IO.iodata_to_binary()
 
-      announce = "A" <> <<byte_size(id)>> <> id <> <<byte_size(ip_binary)>> <> ip_binary
-      body = <<byte_size(announce) + 1, announce::binary>>
-      header = LSDP.header()
-      packet = <<byte_size(header) + 1, header::binary, body::binary>>
+      assert LSDP.parse_announce(build_announce_packet(id, ip)) == %{id: id, ip: ip}
+    end
 
-      assert LSDP.parse_announce(packet) == %{id: id, ip: ip}
+    test "handles a short ID" do
+      assert LSDP.parse_announce(build_announce_packet("A", {10, 0, 0, 1})) ==
+               %{id: "A", ip: {10, 0, 0, 1}}
+    end
+
+    test "handles a long ID" do
+      id = String.duplicate("X", 200)
+
+      assert LSDP.parse_announce(build_announce_packet(id, {127, 0, 0, 1})) ==
+               %{id: id, ip: {127, 0, 0, 1}}
+    end
+
+    test "round-trips through try_parse_announce" do
+      id = "0123456789AB"
+      ip = {192, 168, 178, 95}
+
+      assert LSDP.try_parse_announce(build_announce_packet(id, ip)) ==
+               %{id: id, ip: ip}
     end
   end
 
@@ -59,6 +104,17 @@ defmodule BluOSNowPlaying.LSDPTest do
     test "returns :error on garbage input" do
       assert LSDP.try_parse_announce("garbage") == :error
       assert LSDP.try_parse_query("garbage") == :error
+    end
+
+    test "returns :error on empty input" do
+      assert LSDP.try_parse_announce(<<>>) == :error
+      assert LSDP.try_parse_query(<<>>) == :error
+    end
+
+    test "returns :error on valid header but truncated body" do
+      packet = <<byte_size(LSDP.header()) + 1, LSDP.header()::binary, 5, 0, 0>>
+      assert LSDP.try_parse_announce(packet) == :error
+      assert LSDP.try_parse_query(packet) == :error
     end
   end
 end
