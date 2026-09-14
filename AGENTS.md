@@ -5,6 +5,7 @@ This is a web application written using the Phoenix web framework.
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
 - Tests for library modules under `lib/bluos_now_playing/` go in `test/bluos_now_playing/` mirroring the module file name (e.g. `test/bluos_now_playing/utils_test.exs`) using plain `ExUnit.Case, async: true`. Web tests stay under `test/bluos_now_playing_web/`. Run the targeted file (`mix test test/bluos_now_playing/utils_test.exs`) before the full `mix precommit`.
+- Binary protocol parsers (e.g. LSDP) must be tested against known wire-format packet captures kept as raw binary fixtures, in addition to synthetic packets built with the module's framing helpers — otherwise builder and parser can silently share the same wrong interpretation.
 - The stock Phoenix auth guidance in the usage-rules block below (`live_session`, `current_scope`, authenticated routes) is boilerplate and does **not** apply to this app: it has no authentication and no `live_session` blocks
 
 ### Phoenix v1.8 guidelines
