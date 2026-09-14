@@ -1,6 +1,10 @@
 defmodule BluOSNowPlaying.LSDP do
   @moduledoc """
-  Support for the Lenbrook Service Discovery Protocol
+  Support for the Lenbrook Service Discovery Protocol.
+
+  LSDP packets are framed with a length-prefixed `"LSDP"` header (5 bytes,
+  version 1) followed by a length-prefixed message block: `"A"` for announce,
+  `"Q"` for query.
   """
 
   require Logger
@@ -9,12 +13,24 @@ defmodule BluOSNowPlaying.LSDP do
 
   @port 11430
 
+  @doc """
+  Returns the UDP port used for LSDP discovery (`11430`).
+  """
   def port, do: @port
 
+  @doc """
+  Opens a UDP socket on `port/0` with broadcasting enabled for discovery.
+
+  Returns `{:ok, socket}` or `{:error, reason}` as returned by
+  `:gen_udp.open/2`.
+  """
   def socket() do
     :gen_udp.open(@port, [:binary, broadcast: true])
   end
 
+  @doc """
+  Closes an LSDP UDP socket.
+  """
   def close(socket) do
     :gen_udp.close(socket)
   end
@@ -32,6 +48,13 @@ defmodule BluOSNowPlaying.LSDP do
     {block, rest}
   end
 
+  @doc """
+  Parses an announce body (starting with `"A"`) into `%{id, ip, records}`.
+
+  `:id` is the player identifier, `:ip` the announced IP as a 4-tuple and
+  `:records` a list of `%{class: integer, fields: %{name => value}}` maps. The
+  record list is `[]` when the body carries none, or when they are unparseable.
+  """
   def extract_announce_header(<<"A", bytes::binary>>) do
     {id, rest} = extract_len_block(bytes, false)
     {ip, rest} = extract_len_block(rest, false)
@@ -72,14 +95,28 @@ defmodule BluOSNowPlaying.LSDP do
   @magic "LSDP"
   @version 1
 
+  @doc """
+  Returns the LSDP packet header: the `"LSDP"` magic followed by protocol
+  version 1 (5 bytes in total).
+  """
   def header, do: @magic <> <<@version>>
 
+  @doc """
+  Parses a full announce packet into `%{id: binary, ip: {a, b, c, d}, records: [...]}`.
+
+  Raises `MatchError` on malformed input; consider `try_parse_announce/1`
+  for a safe variant.
+  """
   def parse_announce(packet) when is_binary(packet) do
     {@magic <> <<@version>>, body} = extract_len_block(packet)
     {announce, <<>>} = extract_len_block(body)
     extract_announce_header(announce)
   end
 
+  @doc """
+  Like `parse_announce/1`, but returns `:error` instead of raising on
+  malformed input.
+  """
   def try_parse_announce(packet) when is_binary(packet) do
     try do
       parse_announce(packet)
@@ -88,12 +125,22 @@ defmodule BluOSNowPlaying.LSDP do
     end
   end
 
+  @doc """
+  Parses a full query packet into `%{query: binary}`.
+
+  Raises `MatchError` on malformed input; consider `try_parse_query/1`
+  for a safe variant.
+  """
   def parse_query(packet) when is_binary(packet) do
     {@magic <> <<@version>>, body} = extract_len_block(packet)
     {<<"Q", query::binary>>, <<>>} = extract_len_block(body)
     %{query: query}
   end
 
+  @doc """
+  Like `parse_query/1`, but returns `:error` instead of raising on malformed
+  input.
+  """
   def try_parse_query(packet) when is_binary(packet) do
     try do
       parse_query(packet)
@@ -104,13 +151,24 @@ defmodule BluOSNowPlaying.LSDP do
 
   @class_all <<255, 255>>
 
+  @doc """
+  Builds the length-prefixed `"Q"` query body requesting version 1 of class
+  `0xFFFF` (all classes).
+  """
   def query() do
     body = <<"Q", 1, @class_all::binary>>
     <<byte_size(body) + 1, body::binary>>
   end
 
+  @doc """
+  Builds a complete LSDP query packet (header + query body) ready to broadcast.
+  """
   def query_packet(), do: <<byte_size(header()) + 1, header()::binary, query()::binary>>
 
+  @doc """
+  Sends `query_packet/0` to the broadcast address of every active interface
+  through the given socket. Returns the packet sent.
+  """
   def broadcast_query(socket) do
     packet = query_packet()
 
