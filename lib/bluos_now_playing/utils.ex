@@ -1,4 +1,12 @@
 defmodule BluOSNowPlaying.Utils do
+  @moduledoc """
+  Small helper functions shared across the application.
+  """
+
+  @doc """
+  Converts an IP address tuple to a dotted decimal string, e.g.
+  `{192, 168, 178, 95}` → `"192.168.178.95"`.
+  """
   def ip_to_string(ip) when is_tuple(ip) do
     ip
     |> Tuple.to_list()
@@ -6,6 +14,12 @@ defmodule BluOSNowPlaying.Utils do
     |> Enum.join(".")
   end
 
+  @doc """
+  Converts a dotted decimal string to an IP address tuple, e.g.
+  `"192.168.178.95"` → `{192, 168, 178, 95}`.
+
+  Raises `MatchError` when the string is not a well-formed IP address.
+  """
   def string_to_ip(string) when is_binary(string) do
     string
     |> String.split(".")
@@ -16,6 +30,10 @@ defmodule BluOSNowPlaying.Utils do
     |> List.to_tuple()
   end
 
+  @doc """
+  Formats a number of seconds as `"MM:SS"`, or `"HH:MM:SS"` from 3600 seconds
+  onward. Negative values are formatted as if positive.
+  """
   def format_time(secs) when is_integer(secs) do
     if secs < 3600 do
       minutes = div(secs, 60)
@@ -40,10 +58,20 @@ defmodule BluOSNowPlaying.Utils do
 
   defp format_2digits(_), do: ""
 
+  @doc """
+  Joins the truthy values of an enumerable with the given joiner, skipping
+  `nil`, `false`, and other falsy entries.
+  """
   def join_not_nil(enumerable, joiner) do
     enumerable |> Enum.filter(fn x -> x end) |> Enum.join(joiner)
   end
 
+  @doc """
+  Returns a list of `%{interface: name, address: ip, broadcast: ip}` maps for
+  every active, up-running interface with a broadcast IPv4 address.
+
+  Used to determine where to send LSDP discovery broadcasts.
+  """
   def broadcast_interfaces do
     {:ok, interfaces} = :inet.getifaddrs()
 
