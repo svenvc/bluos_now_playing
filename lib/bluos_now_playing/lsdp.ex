@@ -19,6 +19,13 @@ defmodule BluOSNowPlaying.LSDP do
     :gen_udp.close(socket)
   end
 
+  @doc """
+  Reads a length-prefixed block, returning `{block, rest}`.
+
+  LSDP blocks are framed with a leading length byte. When `include_len?` is
+  `true` (the default) that byte counts itself, so the payload is `len - 1`
+  bytes; when `false` the payload is `len` bytes.
+  """
   def extract_len_block(bytes, include_len? \\ true) when is_binary(bytes) do
     correction = if include_len?, do: -1, else: 0
     <<len::integer, block::binary-size(len + ^correction), rest::binary>> = bytes
@@ -67,7 +74,10 @@ defmodule BluOSNowPlaying.LSDP do
 
   @class_all <<255, 255>>
 
-  def query(), do: <<5, "Q", 1, @class_all>>
+  def query() do
+    body = <<"Q", 1, @class_all::binary>>
+    <<byte_size(body) + 1, body::binary>>
+  end
 
   def query_packet(), do: <<byte_size(header()) + 1, header()::binary, query()::binary>>
 
