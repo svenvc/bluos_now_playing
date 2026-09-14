@@ -3,6 +3,33 @@ defmodule BluOSNowPlaying.LSDPTest do
 
   alias BluOSNowPlaying.LSDP
 
+  @known_query_packet <<6, 76, 83, 68, 80, 1, 5, 81, 1, 255, 255>>
+
+  @known_announce_packet <<6, 76, 83, 68, 80, 1, 105, 65, 6, 144, 86, 130, 183, 31, 236, 4, 192,
+                           168, 178, 95, 2, 0, 1, 5, 4, 110, 97, 109, 101, 9, 78, 79, 68, 69, 32,
+                           78, 65, 78, 79, 4, 112, 111, 114, 116, 5, 49, 49, 48, 48, 48, 5, 109,
+                           111, 100, 101, 108, 4, 78, 48, 51, 48, 7, 118, 101, 114, 115, 105, 111,
+                           110, 7, 52, 46, 49, 54, 46, 50, 50, 2, 122, 115, 1, 48, 0, 4, 2, 4,
+                           110, 97, 109, 101, 9, 78, 79, 68, 69, 32, 78, 65, 78, 79, 4, 112, 111,
+                           114, 116, 5, 49, 49, 52, 51, 49>>
+
+  describe "known wire packets" do
+    test "the query fixture matches query_packet/0 byte-for-byte" do
+      assert @known_query_packet == LSDP.query_packet()
+    end
+
+    test "parses the known query packet" do
+      assert LSDP.try_parse_query(@known_query_packet) == %{query: <<1, 255, 255>>}
+    end
+
+    test "parses the known announce packet" do
+      assert LSDP.try_parse_announce(@known_announce_packet) == %{
+               id: <<144, 86, 130, 183, 31, 236>>,
+               ip: {192, 168, 178, 95}
+             }
+    end
+  end
+
   describe "header/0" do
     test "is the LSDP magic followed by version 1" do
       assert LSDP.header() == "LSDP" <> <<1>>
