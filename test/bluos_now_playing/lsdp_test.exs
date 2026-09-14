@@ -25,7 +25,20 @@ defmodule BluOSNowPlaying.LSDPTest do
     test "parses the known announce packet" do
       assert LSDP.try_parse_announce(@known_announce_packet) == %{
                id: <<144, 86, 130, 183, 31, 236>>,
-               ip: {192, 168, 178, 95}
+               ip: {192, 168, 178, 95},
+               records: [
+                 %{
+                   class: 0x0001,
+                   fields: %{
+                     "name" => "NODE NANO",
+                     "port" => "11000",
+                     "model" => "N030",
+                     "version" => "4.16.22",
+                     "zs" => "0"
+                   }
+                 },
+                 %{class: 0x0004, fields: %{"name" => "NODE NANO", "port" => "11431"}}
+               ]
              }
     end
   end
@@ -90,32 +103,49 @@ defmodule BluOSNowPlaying.LSDPTest do
     end
   end
 
-  defp build_announce_packet(id, ip) do
+  defp build_announce_packet(id, ip, records \\ <<>>) do
     ip_binary = ip |> Tuple.to_list() |> Enum.map(&<<&1>>) |> IO.iodata_to_binary()
-    announce = "A" <> <<byte_size(id)>> <> id <> <<byte_size(ip_binary)>> <> ip_binary
+    announce = "A" <> <<byte_size(id)>> <> id <> <<byte_size(ip_binary)>> <> ip_binary <> records
     body = <<byte_size(announce) + 1, announce::binary>>
     header = LSDP.header()
     <<byte_size(header) + 1, header::binary, body::binary>>
   end
+
+  defp build_records(records) do
+    bytes =
+      for %{class: class, fields: fields} <- records, into: <<>> do
+        pairs =
+          for {key, val} <- fields, into: <<>> do
+            <<byte_size(key), key::binary, byte_size(val), val::binary>>
+          end
+
+        <<class::16, map_size(fields), pairs::binary>>
+      end
+
+    <<length(records), bytes::binary>>
+  end
+
+  defp build_announce_record(class, fields), do: %{class: class, fields: fields}
 
   describe "parse_announce/1" do
     test "parses a packet built with the module's framing" do
       id = "0123456789AB"
       ip = {192, 168, 178, 95}
 
-      assert LSDP.parse_announce(build_announce_packet(id, ip)) == %{id: id, ip: ip}
+      assert LSDP.parse_announce(build_announce_packet(id, ip)) ==
+               %{id: id, ip: ip, records: []}
     end
 
     test "handles a short ID" do
       assert LSDP.parse_announce(build_announce_packet("A", {10, 0, 0, 1})) ==
-               %{id: "A", ip: {10, 0, 0, 1}}
+               %{id: "A", ip: {10, 0, 0, 1}, records: []}
     end
 
     test "handles a long ID" do
       id = String.duplicate("X", 200)
 
       assert LSDP.parse_announce(build_announce_packet(id, {127, 0, 0, 1})) ==
-               %{id: id, ip: {127, 0, 0, 1}}
+               %{id: id, ip: {127, 0, 0, 1}, records: []}
     end
 
     test "round-trips through try_parse_announce" do
@@ -123,7 +153,35 @@ defmodule BluOSNowPlaying.LSDPTest do
       ip = {192, 168, 178, 95}
 
       assert LSDP.try_parse_announce(build_announce_packet(id, ip)) ==
-               %{id: id, ip: ip}
+               %{id: id, ip: ip, records: []}
+    end
+
+    test "parses announce records with key/value fields" do
+      id = "0123456789AB"
+      ip = {192, 168, 178, 95}
+
+      records =
+        build_records([
+          build_announce_record(0x0001, %{"name" => "My Player", "port" => "11000"}),
+          build_announce_record(0x0004, %{"name" => "My Player", "port" => "11431"})
+        ])
+
+      assert LSDP.parse_announce(build_announce_packet(id, ip, records)) == %{
+               id: id,
+               ip: ip,
+               records: [
+                 %{class: 0x0001, fields: %{"name" => "My Player", "port" => "11000"}},
+                 %{class: 0x0004, fields: %{"name" => "My Player", "port" => "11431"}}
+               ]
+             }
+    end
+
+    test "is defensive: returns an empty records list on unparseable trailing bytes" do
+      id = "0123456789AB"
+      ip = {192, 168, 178, 95}
+
+      assert LSDP.parse_announce(build_announce_packet(id, ip, <<255, 255>>)) ==
+               %{id: id, ip: ip, records: []}
     end
   end
 

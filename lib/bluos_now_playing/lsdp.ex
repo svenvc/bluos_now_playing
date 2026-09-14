@@ -34,9 +34,39 @@ defmodule BluOSNowPlaying.LSDP do
 
   def extract_announce_header(<<"A", bytes::binary>>) do
     {id, rest} = extract_len_block(bytes, false)
-    {ip, _} = extract_len_block(rest, false)
+    {ip, rest} = extract_len_block(rest, false)
     ip = ip |> :binary.bin_to_list() |> List.to_tuple()
-    %{id: id, ip: ip}
+    %{id: id, ip: ip, records: extract_records_or_empty(rest)}
+  end
+
+  defp extract_records_or_empty(rest) do
+    extract_records(rest)
+  rescue
+    _ -> []
+  end
+
+  defp extract_records(<<>>), do: []
+
+  defp extract_records(<<count, rest::binary>>) do
+    extract_records(rest, count, [])
+  end
+
+  defp extract_records(_rest, 0, acc), do: Enum.reverse(acc)
+
+  defp extract_records(<<class::16, count, rest::binary>>, n, acc) do
+    {pairs, rest} = extract_pairs(rest, count, [])
+    record = %{class: class, fields: Map.new(pairs)}
+    extract_records(rest, n - 1, [record | acc])
+  end
+
+  defp extract_pairs(rest, 0, acc), do: {Enum.reverse(acc), rest}
+
+  defp extract_pairs(
+         <<key_len, key::binary-size(key_len), val_len, val::binary-size(val_len), rest::binary>>,
+         count,
+         acc
+       ) do
+    extract_pairs(rest, count - 1, [{key, val} | acc])
   end
 
   @magic "LSDP"
