@@ -8,6 +8,33 @@ This is a web application written using the Phoenix web framework.
 - Binary protocol parsers (e.g. LSDP) must be tested against known wire-format packet captures kept as raw binary fixtures, in addition to synthetic packets built with the module's framing helpers — otherwise builder and parser can silently share the same wrong interpretation.
 - The stock Phoenix auth guidance in the usage-rules block below (`live_session`, `current_scope`, authenticated routes) is boilerplate and does **not** apply to this app: it has no authentication and no `live_session` blocks
 
+## Standalone binaries (Burrito)
+
+`mix release.burrito` packages the release as self-extracting binaries, one per target, in `burrito_out/`:
+
+```sh
+MIX_ENV=prod mix release.burrito                              # all five targets
+MIX_ENV=prod BURRITO_TARGET=macos_arm64 mix release.burrito  # one target
+MIX_ENV=prod mix release --overwrite                         # plain release, as the Dockerfile does
+chmod +x burrito_out/*
+./test/smoke.sh burrito_out/bluos_now_playing_macos_arm64  # black-box check against a built binary
+```
+
+A binary only runs on the platform it was built for, so `test/smoke.sh` has to be pointed at the one matching the host — it prints the `host target` it expects and says so when handed another platform's binary. The `chmod +x` is needed because Burrito writes the executable bit for the owner only.
+
+Needs Zig **0.16.0** exactly (Burrito hard-fails on any other version), `xz`, and `7zz` for the Windows target. Downloaded ERTS archives are cached in `~/.cache/burrito_file_cache` (macOS: `~/Library/Caches/burrito_file_cache`).
+
+Things that are easy to get wrong here:
+
+- **`MIX_ENV=prod` has to come from the environment**, not from `Mix.env/1` inside the alias. By the time an alias runs, `loadconfig` has already read `config/dev.exs`, and the release then ships an endpoint compiled with the development code reloader. The boot aborts with a `compile_env` error for `[:code_reloader]`. The alias raises with the right command when the env is wrong.
+- **Clear the payload cache after every rebuild.** Burrito unpacks into `~/Library/Application Support/.burrito/<app>_erts-X.Y_<version>` and keys that directory on the ERTS and app version only, not on the build. A rebuilt binary at the same version silently runs the *previous* payload — which looks exactly like your changes having no effect. `./burrito_out/bluos_now_playing_macos_arm64 maintenance uninstall` clears it. The key is not per target either, so don't run two architectures of the same version on one machine. `maintenance meta` is the way to confirm which build you are actually on: it reads the metadata embedded in the binary (app name, app version, ERTS version, Zig target, Zig version) without unpacking, so it is also the smoke test's pre-flight, since a binary built for another platform cannot be exec'd at all and therefore cannot answer it.
+- **Assets must be digested first.** `release.burrito` runs `compile` and `assets.deploy` before `release`, because esbuild resolves the phoenix-colocated hooks out of the build path, and `config/prod.exs` points `cache_static_manifest` at `priv/static/cache_manifest.json`. Without them the page renders unstyled and `test/smoke.sh` fails on the asset checks.
+- **The Dockerfile opts out** with `BURRITO_BUILD=false`, so `RUN mix release` there keeps producing a plain release. The wrap step in `releases.steps` is otherwise unconditional and would hard-fail on the missing Zig. The gate lives in `BluOSNowPlaying.Release.burrito_build?/0`.
+- **`SECRET_KEY_BASE` and `PHX_SERVER` are optional in a binary.** `config/runtime.exs` falls back to a constant 64-byte secret and to `PHX_HOST=localhost`, and `__BURRITO` (set by the launcher) enables `server: true`, so the binary is a zero-config server. The fallback secret is safe here only because the app has no auth.
+- **The app parks in `Application.start/2` under `__BURRITO`.** Burrito starts the release with `Elixir.CLI.start_cli/0` and *without* the `--no-halt` that the release's own `bin/bluos_now_playing` passes, so the VM halts the moment boot completes. A release that just returns from `start/2` exits right after the endpoint reports it is up. Do not "clean this up" by returning `{:ok, pid}`.
+- **The launcher does not forward signals** to the BEAM child, so `kill <launcher-pid>` leaves the server running; kill the child (or use Ctrl-C, which hits the whole process group). `test/smoke.sh` kills the child first and lets the launcher exit on its own.
+- The macOS binaries ship unsigned, like `expert-lsp` and `wc`: only browser downloads set the `com.apple.quarantine` attribute that Gatekeeper blocks; `curl` installs and tool-based fetches are unaffected. Notarizing with an Apple Developer ID would be the only further step.
+
 ### Phoenix v1.8 guidelines
 
 - **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content

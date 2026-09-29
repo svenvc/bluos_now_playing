@@ -55,6 +55,9 @@ RUN mix assets.deploy
 COPY config/runtime.exs config/
 
 COPY rel rel
+# The release step wraps the app in Burrito binaries, which needs Zig, xz and
+# 7zz. This image wants the plain release that `bin/server` starts instead.
+ENV BURRITO_BUILD=false
 RUN mix release
 
 # start a new build stage so that the final image will only contain

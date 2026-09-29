@@ -16,7 +16,11 @@ import Config
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
-if System.get_env("PHX_SERVER") do
+#
+# Burrito's launcher sets __BURRITO in the environment of the VM it starts, and
+# it evaluates this file, so a standalone binary enables the server on its own
+# and needs neither PHX_SERVER nor bin/server.
+if System.get_env("PHX_SERVER") || System.get_env("__BURRITO") do
   config :bluos_now_playing, BluOSNowPlayingWeb.Endpoint, server: true
 end
 
@@ -26,14 +30,18 @@ if config_env() == :prod do
   # want to use a different value for prod and you most likely don't want
   # to check this value into version control, so we use an environment
   # variable instead.
+  #
+  # The fallback is what a standalone binary built by `mix release.burrito`
+  # falls back to. It is a constant in every copy of that binary, which is
+  # fine here: the app has no accounts, no sessions to trust and no
+  # cross-origin protections to forge, and a person who can read the secret
+  # out of the binary can read the same code and the same secret.
+  # Plug.Conn requires at least 64 bytes of secret for its cookie store.
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
-      """
+      "lhn+mhcWUKL5NN+qKaFDbvG6W1P0/GdnmE8WxdICu/53NEJHRMwthoC+4E2bYC4m"
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = System.get_env("PHX_HOST") || "localhost"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
   config :bluos_now_playing, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")

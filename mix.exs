@@ -5,11 +5,13 @@ defmodule BluOSNowPlaying.MixProject do
     [
       app: :bluos_now_playing,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      # Burrito, a build-time dependency below, needs 1.17 or later.
+      elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      releases: releases(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader]
     ]
@@ -61,7 +63,31 @@ defmodule BluOSNowPlaying.MixProject do
       {:dns_cluster, "~> 0.3.0"},
       {:bandit, "~> 1.5"},
       {:req, "~> 0.7.0"},
-      {:sweet_xml, "~> 0.7.0"}
+      {:sweet_xml, "~> 0.7.0"},
+      # Build-time only: the release step runs at `mix release` time, so the app
+      # never needs Burrito in the payload.
+      {:burrito, "~> 1.6", runtime: false}
+    ]
+  end
+
+  # The release name determines the release directory, the boot script and the
+  # binary names, so it stays `bluos_now_playing` for the Docker image and the
+  # `rel/overlays/bin/server` script to keep working.
+  # BURRITO_TARGET=<alias> mix release builds a single target.
+  defp releases do
+    [
+      bluos_now_playing: [
+        steps: [:assemble, &BluOSNowPlaying.Release.wrap/1],
+        burrito: [
+          targets: [
+            macos_x86_64: [os: :darwin, cpu: :x86_64],
+            macos_arm64: [os: :darwin, cpu: :aarch64],
+            linux_x86_64: [os: :linux, cpu: :x86_64],
+            linux_arm64: [os: :linux, cpu: :aarch64],
+            windows_x86_64: [os: :windows, cpu: :x86_64]
+          ]
+        ]
+      ]
     ]
   end
 
@@ -81,7 +107,30 @@ defmodule BluOSNowPlaying.MixProject do
         "esbuild bluos_now_playing --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"],
+      # Builds the standalone binaries. A function rather than a list of task
+      # strings, because it has to set BURRITO_BUILD for the release step.
+      # The Mix environment still has to come from the outside:
+      #     MIX_ENV=prod mix release.burrito
+      # Changing it from in here is too late, loadconfig has already read
+      # config/dev.exs by the time an alias runs, and the release then ships an
+      # endpoint compiled with the development code reloader.
+      "release.burrito": fn _ ->
+        unless Mix.env() == :prod do
+          Mix.raise("""
+          release.burrito builds a production release, run it as:
+
+              MIX_ENV=prod mix release.burrito
+          """)
+        end
+
+        System.put_env("BURRITO_BUILD", "true")
+        # esbuild resolves the phoenix-colocated hooks out of the build path, so
+        # the app has to be compiled before the assets are built.
+        Mix.Task.run("compile")
+        Mix.Task.run("assets.deploy")
+        Mix.Task.run("release", ["--overwrite"])
+      end
     ]
   end
 end

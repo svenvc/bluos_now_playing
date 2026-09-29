@@ -158,6 +158,58 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
+## Standalone binaries
+
+The app also builds as a single self-contained executable per platform, with the
+Erlang runtime, the release and the assets baked in. Nothing else needs to be
+installed on the machine that runs it: get hold of the binary, make it
+executable and start it.
+
+```bash
+$ chmod +x bluos_now_playing_linux_x86_64
+$ ./bluos_now_playing_linux_x86_64
+```
+
+The binary starts a server on port 4000 and discovers the player on the local
+network exactly like `mix phx.server` does. `PORT`, `PHX_HOST` and
+`BLUOS_PLAYER_IP` work as they do for the release, and `SECRET_KEY_BASE` has a
+built-in default so no setup is required.
+
+The `maintenance` command covers the things you may want to do without
+reinstalling:
+
+```bash
+$ ./bluos_now_playing_linux_x86_64 maintenance meta       # what this binary is
+$ ./bluos_now_playing_linux_x86_64 maintenance directory  # where it unpacks to
+$ ./bluos_now_playing_linux_x86_64 maintenance uninstall  # delete the payload
+```
+
+`maintenance meta` reports the app and ERTS version, the Zig target the binary
+was built for and the Zig version used, and answers without unpacking anything.
+That is the quickest way to confirm you are running the build you think you are,
+which matters because a rebuilt binary at the same version reuses the previously
+unpacked payload until it is uninstalled. Like every other invocation, it only
+works on the platform the binary was built for.
+
+Binaries are built for macOS (Intel and Apple Silicon), Linux (x86-64 and
+arm64) and Windows (x86-64). The macOS binaries are unsigned, so a browser
+download has to be cleared with `xattr -d com.apple.quarantine <binary>` before
+Gatekeeper will run it. A `curl` install is not affected.
+
+To build them yourself you need Zig **0.16.0** exactly, `xz`, and `7zz` for the
+Windows target:
+
+```bash
+$ MIX_ENV=prod mix release.burrito        # writes burrito_out/
+$ chmod +x burrito_out/*
+$ ./test/smoke.sh burrito_out/bluos_now_playing_macos_arm64
+```
+
+A binary only runs on the platform it was built for, so run the smoke test
+against the one matching your machine. It prints the `host target` it expects,
+and prints the binary's app version, ERTS version and target so you can tell
+which build you are testing.
+
 ## Learn more
 
 * Official website: https://www.phoenixframework.org/

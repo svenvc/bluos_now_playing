@@ -21,7 +21,21 @@ defmodule BluOSNowPlaying.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: BluOSNowPlaying.Supervisor]
-    Supervisor.start_link(children, opts)
+    {:ok, pid} = Supervisor.start_link(children, opts)
+
+    # Burrito's launcher starts the release with `Elixir.CLI.start_cli/0` and
+    # without the `--no-halt` the release's own `bin/bluos_now_playing` passes.
+    # That halts the VM as soon as every application has finished starting, so
+    # a release that just returns here shuts down again right after the
+    # endpoint reports that it is up. Parking this process keeps the boot open
+    # for as long as the server runs. The release's own start script does pass
+    # --no-halt, and every other entry point runs the application normally, so
+    # only the standalone binaries park here.
+    if System.get_env("__BURRITO") do
+      Process.sleep(:infinity)
+    end
+
+    {:ok, pid}
   end
 
   # Tell Phoenix to update the endpoint configuration
