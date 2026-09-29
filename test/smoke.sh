@@ -61,21 +61,30 @@ expect() {
   fi
 }
 
-# The server log is what explains a failure, and it disappears with $WORK, so
-# print it before giving up. On GitHub Actions a job log is only readable by
-# someone signed in to the site, so the same text goes to the step summary,
-# which is public on a public repository.
+# The log is what explains a failure and it disappears with $WORK, so print it
+# before giving up. The head matters as much as the tail: the tail is the
+# Player's ten second poll, while whether the endpoint started, and on what,
+# is decided in the first lines. A job log is only readable by someone signed
+# in to the site, so the same text goes to the step summary, which is public on
+# a public repository.
 diagnostics() {
   [ -f "$WORK/log" ] || return 0
+  log() {
+    head -n 25 "$WORK/log"
+    echo '...'
+    grep -iE 'endpoint|running|listen|port|address|bind|error' "$WORK/log" | head -n 20
+    echo '...'
+    tail -n 40 "$WORK/log"
+  }
   echo
   echo "# server log"
-  tail -n 40 "$WORK/log" | sed 's/^/# /'
+  log | sed 's/^/# /'
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     {
       echo '## Server log'
       echo
       echo '```text'
-      tail -n 40 "$WORK/log"
+      log
       echo '```'
     } >>"$GITHUB_STEP_SUMMARY"
   fi
@@ -176,7 +185,7 @@ while [ "$i" -lt "${STARTUP_TRIES:-180}" ]; do
     status=dead
     break
   fi
-  status=$(curl -s -o "$WORK/body" -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null) || status=000
+  status=$(curl -s --noproxy "*" -o "$WORK/body" -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null) || status=000
   [ "$status" != 000 ] && break
   i=$((i + 1))
   [ $((i % 30)) -eq 0 ] && echo "# still waiting for the endpoint: ${i}s"
@@ -191,6 +200,35 @@ if [ "$status" = dead ]; then
   diagnostics
   echo "# failures" >&2
   exit 1
+fi
+
+# The app running with nothing on the port is a different failure from a boot
+# that failed, and the log cannot tell them apart on its own: the Player polls
+# happily either way. So ask the machine. The default port matters because PORT
+# is read from the environment, and an answer there means the port never got
+# through rather than the endpoint never binding. curl -v says whether the
+# connection was refused, timed out or went through a proxy, which are three
+# very different reasons for the same 000.
+if [ "$status" = 000 ]; then
+  echo
+  echo "# nothing answered on port $PORT"
+  default=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://127.0.0.1:4000/") || default=000
+  echo "# GET / on the default port 4000: $default"
+  # The endpoint binds the IPv6 wildcard, and a platform is free to leave that
+  # socket IPv6 only, so IPv4 loopback is not the only address worth asking.
+  six=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://[::1]:$PORT/") || six=000
+  echo "# GET / on [::1]:$PORT: $six"
+  if command -v netstat >/dev/null 2>&1; then
+    echo "# netstat for port $PORT:"
+    netstat -an 2>/dev/null | grep -E "[:.]${PORT}[[:space:]]" >"$WORK/listening" || true
+    if [ -s "$WORK/listening" ]; then
+      sed 's/^/#   /' "$WORK/listening"
+    else
+      echo "#   nothing listening"
+    fi
+  fi
+  echo "# curl -v against port $PORT, proxy settings left in:"
+  curl -v -o /dev/null "http://127.0.0.1:$PORT/" 2>&1 | sed 's/^/#   /'
 fi
 
 expect "GET / answers 200 without PHX_SERVER" 200 "$status"
@@ -209,7 +247,7 @@ done
 # The digested manifest is what makes the CSS and JS load, and it only exists
 # if `mix assets.deploy` ran before `mix release`.
 for asset in /assets/css/app.css /assets/js/app.js; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT$asset") || code=000
+  code=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT$asset") || code=000
   if [ "$code" = 200 ]; then
     report ok "GET $asset answers 200"
   else
@@ -221,7 +259,7 @@ done
 # are left out on purpose: they answer with the state of whatever player is on
 # the network, and LSDP discovery takes a second or two after boot, so they are
 # either slow or, on a machine without a player, empty.
-code=$(curl -s -o "$WORK/api" -w '%{http_code}' "http://127.0.0.1:$PORT/api") || code=000
+code=$(curl -s --noproxy "*" -o "$WORK/api" -w '%{http_code}' "http://127.0.0.1:$PORT/api") || code=000
 if [ -f "$WORK/api" ] && [ "$code" = 200 ] && grep -q '/api/player-status-updates' "$WORK/api"; then
   report ok "GET /api answers 200"
 else
