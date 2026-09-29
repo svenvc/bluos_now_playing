@@ -184,12 +184,13 @@ $ ./bluos_now_playing_linux_x86_64 maintenance directory  # where it unpacks to
 $ ./bluos_now_playing_linux_x86_64 maintenance uninstall  # delete the payload
 ```
 
-`maintenance meta` reports the app and ERTS version, the Zig target the binary
-was built for and the Zig version used, and answers without unpacking anything.
-That is the quickest way to confirm you are running the build you think you are,
-which matters because a rebuilt binary at the same version reuses the previously
-unpacked payload until it is uninstalled. Like every other invocation, it only
-works on the platform the binary was built for.
+`maintenance meta` reports the app version, the ERTS version of the machine that
+built the binary, the Zig target it was built for and the Zig version used, and
+answers without unpacking anything. That is the quickest way to confirm you are
+running the build you think you are, which matters because a rebuilt binary at
+the same version reuses the previously unpacked payload until it is uninstalled.
+Like every other invocation, it only works on the platform the binary was built
+for.
 
 Binaries are built for macOS (Intel and Apple Silicon), Linux (x86-64 and
 arm64) and Windows (x86-64). The macOS binaries are unsigned, so a browser
@@ -209,6 +210,12 @@ A binary only runs on the platform it was built for, so run the smoke test
 against the one matching your machine. It prints the `host target` it expects,
 and prints the binary's app version, ERTS version and target so you can tell
 which build you are testing.
+
+The binaries carry a runtime of their own, so nothing has to be installed on the
+machine that runs them: not Erlang, not OpenSSL, and on Linux not even a C
+library, because the native libraries are linked into the payload rather than
+taken from the build machine. That is also why a binary can only run on the
+platform it was built for.
 
 ## Learn more
 

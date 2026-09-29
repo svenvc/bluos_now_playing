@@ -79,6 +79,10 @@ defmodule BluOSNowPlaying.MixProject do
       bluos_now_playing: [
         steps: [:assemble, &BluOSNowPlaying.Release.wrap/1],
         burrito: [
+          # Right after the ERTS is resolved, so it can be read, and before the
+          # patch phase copies it in: the NIFs have to be the ERTS's before the
+          # payload is assembled, or a cross build ships the build machine's.
+          extra_steps: [fetch: [post: [BluOSNowPlaying.Release.NIFsFromERTS]]],
           targets: [
             macos_x86_64: [os: :darwin, cpu: :x86_64],
             macos_arm64: [os: :darwin, cpu: :aarch64],

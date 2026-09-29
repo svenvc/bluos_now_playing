@@ -6,8 +6,8 @@ name: Build standalone binaries
 on:
   workflow_call:
 
-# The Erlang and Elixir the binaries are built with. The ERTS that ends up inside
-# them is pinned from this Erlang version, so it is also what the ERTS cache key
+# The Elixir and Erlang the binaries are built with. The ERTS that ends up inside
+# them is pinned from the Erlang version, so this is also what the ERTS cache key
 # below is made of. Kept here, once, because both matter and have to agree.
 env:
   ELIXIR_VERSION: '1.19'
@@ -40,10 +40,24 @@ jobs:
         sudo tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
         echo /opt/zig >> "$GITHUB_PATH"
 
+    # Burrito pins the ERTS it bundles from the Erlang running the build, down to
+    # the minor version, so the build says out loud which one it got. It is the
+    # pair that decides which NIFs a target can load, and the build log for a
+    # binary that dies with "Unable to load crypto library" needs both of them.
+    # Only the major is asserted: the pin is derived from what is installed, so
+    # the minor cannot disagree, and the check is here to catch the requested
+    # version drifting away from the one setup-beam actually installed.
+    - name: Check the ERTS pin
+      run: |
+        installed="$(erl -noshell -eval 'io:format("~s", [erlang:system_info(otp_release)]), halt().')"
+        echo "building with OTP ${installed}"
+        echo "crypto app: $(ls "$(erl -noshell -eval 'io:format("~s", [code:root_dir()]), halt().')")/lib" | grep crypto)"
+        test "${installed%%.*}" = "${OTP_VERSION%%.*}"
+
     # Burrito downloads a prebuilt ERTS and keeps it here. The artifact depends
-    # on the Erlang minor version, not on this repository, so the key is that
-    # version. A stale hit is only a wasted restore rather than a wrong build:
-    # Burrito looks the ERTS up by its own version key and refetches on a miss.
+    # on the ERTS version, not on this repository, so the key is that version. A
+    # stale hit is only a wasted restore rather than a wrong build: Burrito looks
+    # the ERTS up by its own key and refetches on a miss.
     - name: Restore ERTS cache
       uses: actions/cache@v6
       with:
