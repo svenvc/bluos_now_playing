@@ -54,7 +54,15 @@ if config_env() == :prod do
       # See the documentation on https://hexdocs.pm/bandit/Bandit.html#t:options/0
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
       ip: {0, 0, 0, 0, 0, 0, 0, 0},
-      port: port
+      port: port,
+      # A socket bound to the IPv6 wildcard is dual stack on macOS and Linux, so
+      # it takes IPv4 connections as IPv4 mapped addresses. Windows leaves that
+      # socket IPv6 only, and an IPv4 client is refused with nothing listening,
+      # which is what a Windows binary did until this was set: it answered on
+      # [::1] and nothing on 127.0.0.1. This option asks for both stacks
+      # everywhere, and it is a gen_tcp option, so it needs no Bandit support of
+      # its own beyond passing it through.
+      thousand_island_options: [transport_options: [ipv6_v6only: false]]
     ],
     secret_key_base: secret_key_base
 
