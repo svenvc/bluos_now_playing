@@ -46,6 +46,20 @@ if config_env() == :prod do
 
   config :bluos_now_playing, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # The IPv6 wildcard is dual stack on macOS and Linux, so it takes IPv4
+  # connections as IPv4 mapped addresses and one address serves both stacks.
+  # Windows leaves that socket IPv6 only, which means a Windows binary answers
+  # on [::1] and refuses every connection to 127.0.0.1, and there is no way to
+  # ask for both through gen_tcp: ipv6_v6only is set with setsockopt after the
+  # bind, which Windows rejects on a bound socket with :einval. So the wildcard
+  # is IPv4 there, and IPv4 is what anything reaching this app on the network
+  # asks for.
+  ip =
+    case :os.type() do
+      {:win32, _} -> {0, 0, 0, 0}
+      _ -> {0, 0, 0, 0, 0, 0, 0, 0}
+    end
+
   config :bluos_now_playing, BluOSNowPlayingWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
@@ -53,16 +67,8 @@ if config_env() == :prod do
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
       # See the documentation on https://hexdocs.pm/bandit/Bandit.html#t:options/0
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0},
-      port: port,
-      # A socket bound to the IPv6 wildcard is dual stack on macOS and Linux, so
-      # it takes IPv4 connections as IPv4 mapped addresses. Windows leaves that
-      # socket IPv6 only, and an IPv4 client is refused with nothing listening,
-      # which is what a Windows binary did until this was set: it answered on
-      # [::1] and nothing on 127.0.0.1. This option asks for both stacks
-      # everywhere, and it is a gen_tcp option, so it needs no Bandit support of
-      # its own beyond passing it through.
-      thousand_island_options: [transport_options: [ipv6_v6only: false]]
+      ip: ip,
+      port: port
     ],
     secret_key_base: secret_key_base
 
