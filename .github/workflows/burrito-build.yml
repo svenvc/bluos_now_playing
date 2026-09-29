@@ -45,7 +45,7 @@ jobs:
     # version. A stale hit is only a wasted restore rather than a wrong build:
     # Burrito looks the ERTS up by its own version key and refetches on a miss.
     - name: Restore ERTS cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.cache/burrito_file_cache
         key: burrito-erts-otp${{ env.OTP_VERSION }}
@@ -66,7 +66,7 @@ jobs:
         ./test/smoke.sh burrito_out/bluos_now_playing_linux_x86_64
 
     - name: Upload binaries
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: burrito-binaries
         path: burrito_out/*

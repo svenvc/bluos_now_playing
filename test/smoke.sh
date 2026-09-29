@@ -61,6 +61,26 @@ expect() {
   fi
 }
 
+# The server log is what explains a failure, and it disappears with $WORK, so
+# print it before giving up. On GitHub Actions a job log is only readable by
+# someone signed in to the site, so the same text goes to the step summary,
+# which is public on a public repository.
+diagnostics() {
+  [ -f "$WORK/log" ] || return 0
+  echo
+  echo "# server log"
+  tail -n 40 "$WORK/log" | sed 's/^/# /'
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+      echo '## Server log'
+      echo
+      echo '```text'
+      tail -n 40 "$WORK/log"
+      echo '```'
+    } >>"$GITHUB_STEP_SUMMARY"
+  fi
+}
+
 echo "# smoke testing $BIN"
 echo "# host target: $HOST_TARGET"
 
@@ -156,8 +176,8 @@ if [ "$status" = dead ]; then
   # A mismatched or non-executable binary never gets this far: the pre-flight
   # `maintenance meta` above catches both. So reaching here means the platform is
   # right and the boot itself failed, which is the interesting case.
-  report fail "the binary stays running" \
-    "it exited, log: $(tail -3 "$WORK/log" | tr '\n' ' ')"
+  report fail "the binary stays running" "it exited"
+  diagnostics
   echo "# failures" >&2
   exit 1
 fi
@@ -201,6 +221,11 @@ if grep -qE '\[error\]|\[warning\].*Address already in use' "$WORK/log"; then
   report fail "the log has no errors" "log: $(grep -E '\[error\]|\[warning\].*Address already in use' "$WORK/log" | head -3 | tr '\n' ' ')"
 else
   report ok "the log has no errors"
+fi
+
+# The log has to be read before cleanup removes it.
+if [ "$failures" -ne 0 ]; then
+  diagnostics
 fi
 
 cleanup

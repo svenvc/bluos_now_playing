@@ -51,7 +51,7 @@ jobs:
     - name: Check out git repository
       uses: actions/checkout@v7
     - name: Download binaries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: burrito-binaries
         # upload-artifact roots the archive at the common ancestor of
@@ -70,7 +70,7 @@ jobs:
     - name: Check out git repository
       uses: actions/checkout@v7
     - name: Download binaries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: burrito-binaries
         # upload-artifact roots the archive at the common ancestor of
