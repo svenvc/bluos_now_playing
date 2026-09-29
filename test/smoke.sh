@@ -176,6 +176,38 @@ SERVER_PID=$!
 
 status=000
 i=0
+reported=0
+
+# The app running with nothing on the port is a different failure from a boot
+# that failed, and the log cannot tell them apart on its own: the Player polls
+# happily either way. So ask the machine, and say what it says. The default port
+# matters because PORT is read from the environment, so an answer there means
+# the port never got through rather than the endpoint never binding. The IPv6
+# loopback covers an endpoint that came up on a socket left IPv6 only, which
+# IPv4 loopback would never reach. netstat says whether anything is listening
+# at all. And curl -v, with the environment's proxy settings left in on
+# purpose, says whether the connection was refused, timed out or handed to a
+# proxy, which are three very different reasons for the same 000.
+startup_report() {
+  reported=1
+  echo "# nothing has answered on port $PORT, at $1"
+  default=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://127.0.0.1:4000/") || default=000
+  echo "# GET / on the default port 4000: $default"
+  six=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://[::1]:$PORT/") || six=000
+  echo "# GET / on [::1]:$PORT: $six"
+  if command -v netstat >/dev/null 2>&1; then
+    netstat -an 2>/dev/null | grep -E "[:.]${PORT}[[:space:]]" >"$WORK/listening" || true
+    echo "# netstat for port $PORT:"
+    if [ -s "$WORK/listening" ]; then
+      sed 's/^/#   /' "$WORK/listening"
+    else
+      echo "#   nothing listening"
+    fi
+  fi
+  echo "# curl -v against port $PORT, proxy settings left in:"
+  curl -v -o /dev/null "http://127.0.0.1:$PORT/" 2>&1 | grep -vE '^\s*[0-9%\s]|Dload|Total' | sed 's/^/#   /'
+}
+
 # The first run unpacks the payload, which is tens of thousands of small files,
 # and on a fresh Windows runner every one of them goes past Defender. That is
 # minutes, not seconds, so the wait is generous and says how long it has been
@@ -188,7 +220,12 @@ while [ "$i" -lt "${STARTUP_TRIES:-180}" ]; do
   status=$(curl -s --noproxy "*" -o "$WORK/body" -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null) || status=000
   [ "$status" != 000 ] && break
   i=$((i + 1))
-  [ $((i % 30)) -eq 0 ] && echo "# still waiting for the endpoint: ${i}s"
+  # Report while still waiting rather than only at the end, so a run that is
+  # given up on half way still says what the machine could see.
+  if [ $((i % 30)) -eq 0 ]; then
+    echo "# still waiting for the endpoint: ${i}s"
+    startup_report "$i"
+  fi
   sleep 1
 done
 
@@ -202,34 +239,7 @@ if [ "$status" = dead ]; then
   exit 1
 fi
 
-# The app running with nothing on the port is a different failure from a boot
-# that failed, and the log cannot tell them apart on its own: the Player polls
-# happily either way. So ask the machine. The default port matters because PORT
-# is read from the environment, and an answer there means the port never got
-# through rather than the endpoint never binding. curl -v says whether the
-# connection was refused, timed out or went through a proxy, which are three
-# very different reasons for the same 000.
-if [ "$status" = 000 ]; then
-  echo
-  echo "# nothing answered on port $PORT"
-  default=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://127.0.0.1:4000/") || default=000
-  echo "# GET / on the default port 4000: $default"
-  # The endpoint binds the IPv6 wildcard, and a platform is free to leave that
-  # socket IPv6 only, so IPv4 loopback is not the only address worth asking.
-  six=$(curl -s --noproxy "*" -o /dev/null -w '%{http_code}' "http://[::1]:$PORT/") || six=000
-  echo "# GET / on [::1]:$PORT: $six"
-  if command -v netstat >/dev/null 2>&1; then
-    echo "# netstat for port $PORT:"
-    netstat -an 2>/dev/null | grep -E "[:.]${PORT}[[:space:]]" >"$WORK/listening" || true
-    if [ -s "$WORK/listening" ]; then
-      sed 's/^/#   /' "$WORK/listening"
-    else
-      echo "#   nothing listening"
-    fi
-  fi
-  echo "# curl -v against port $PORT, proxy settings left in:"
-  curl -v -o /dev/null "http://127.0.0.1:$PORT/" 2>&1 | sed 's/^/#   /'
-fi
+[ "$status" = 000 ] && [ "$reported" -eq 0 ] && startup_report "the end"
 
 expect "GET / answers 200 without PHX_SERVER" 200 "$status"
 
