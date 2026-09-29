@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  # No permissions here on purpose: this job only builds, uploads artifacts and
+  # downloads Zig, none of which needs a token. `contents: write` is on the
+  # publishing job below, which is the one that needs it.
+  release:
+    name: Build standalone binaries
+    uses: ./.github/workflows/burrito-build.yml
+
+  publish:
+    name: Publish the release
+    needs: release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+    - name: Check out git repository
+      uses: actions/checkout@v7
+
+    # The version in the binary comes from mix.exs, not from the tag, so a tag
+    # that does not match it would publish artifacts that report the wrong
+    # version in `maintenance meta`.
+    - name: Check that the tag matches the version
+      run: |
+        version=$(sed -n 's/.*version: "\([^"]*\)".*/\1/p' mix.exs | head -1)
+        if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+          echo "::error::tag $GITHUB_REF_NAME does not match version $version in mix.exs"
+          exit 1
+        fi
+        echo "publishing $version"
+
+    - name: Download binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: burrito-binaries
+        # upload-artifact roots the archive at the common ancestor of
+        # burrito_out/*, so the binaries arrive without that directory.
+        path: burrito_out
+
+    - name: Write checksums
+      run: cd burrito_out && sha256sum bluos_now_playing_* > checksums.txt
+
+    - name: Publish release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: burrito_out/*
+        generate_release_notes: true

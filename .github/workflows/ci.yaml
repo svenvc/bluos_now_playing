@@ -1,0 +1,86 @@
+name: Elixir CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# A newer push to the same branch makes the older run pointless, and building
+# binaries is the expensive part of this workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Check out git repository
+      uses: actions/checkout@v7
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: '1.19'
+        otp-version: '28'
+    - name: Install dependencies
+      run: mix deps.get
+    # Separate steps, so a failure says which check failed rather than that
+    # "precommit" did. Note that CI formats with the Elixir version above while
+    # the code is formatted locally with whatever the developer runs: if these
+    # two ever disagree, this is the step that says so.
+    - name: Check formatting
+      run: mix format --check-formatted
+    - name: Compile with warnings as errors
+      run: mix compile --warnings-as-errors
+    - name: Run tests
+      run: mix test
+
+  build:
+    name: Build standalone binaries
+    uses: ./.github/workflows/burrito-build.yml
+
+  # The only job that ever runs a macOS binary. It also runs it on a machine with
+  # no payload unpacked yet, which is what a user gets when they download one.
+  smoke-macos:
+    name: Smoke test the macOS binary
+    needs: build
+    runs-on: macos-14
+    steps:
+    - name: Check out git repository
+      uses: actions/checkout@v7
+    - name: Download binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: burrito-binaries
+        # upload-artifact roots the archive at the common ancestor of
+        # burrito_out/*, so the binaries arrive without that directory.
+        path: burrito_out
+    - name: Smoke test the macOS binary
+      run: |
+        chmod +x burrito_out/bluos_now_playing_macos_arm64
+        ./test/smoke.sh burrito_out/bluos_now_playing_macos_arm64
+
+  smoke-windows:
+    name: Smoke test the Windows binary
+    needs: build
+    runs-on: windows-2022
+    steps:
+    - name: Check out git repository
+      uses: actions/checkout@v7
+    - name: Download binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: burrito-binaries
+        # upload-artifact roots the archive at the common ancestor of
+        # burrito_out/*, so the binaries arrive without that directory.
+        path: burrito_out
+    - name: Smoke test the Windows binary
+      shell: bash
+      # No chmod +x: there is no executable bit to set on a .exe, and Git Bash
+      # runs one regardless. The launcher starts the BEAM as a child and does
+      # not forward signals to it, and Git Bash has no pkill -P, so the server
+      # is left running on the runner after this script exits. That is fine on a
+      # throwaway runner: the job ends and the machine is discarded.
+      run: ./test/smoke.sh burrito_out/bluos_now_playing_windows_x86_64.exe

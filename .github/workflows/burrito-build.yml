@@ -1,0 +1,73 @@
+name: Build standalone binaries
+
+# The Zig dance, the ERTS download and the Linux smoke test, shared by ci.yaml
+# and release.yaml so there is only one copy of it to keep correct. Called as a
+# job, not triggered on its own.
+on:
+  workflow_call:
+
+# The Erlang and Elixir the binaries are built with. The ERTS that ends up inside
+# them is pinned from this Erlang version, so it is also what the ERTS cache key
+# below is made of. Kept here, once, because both matter and have to agree.
+env:
+  ELIXIR_VERSION: '1.19'
+  OTP_VERSION: '28'
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Check out git repository
+      uses: actions/checkout@v7
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+
+    - name: Install xz, 7z and curl
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl xz-utils p7zip-full
+
+    # Burrito hard-fails on any Zig version but this one, exactly.
+    - name: Install Zig
+      run: |
+        curl -fsSL https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz -o /tmp/zig.tar.xz
+        sudo mkdir -p /opt/zig
+        sudo tar -xf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+        echo /opt/zig >> "$GITHUB_PATH"
+
+    # Burrito downloads a prebuilt ERTS and keeps it here. The artifact depends
+    # on the Erlang minor version, not on this repository, so the key is that
+    # version. A stale hit is only a wasted restore rather than a wrong build:
+    # Burrito looks the ERTS up by its own version key and refetches on a miss.
+    - name: Restore ERTS cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/burrito_file_cache
+        key: burrito-erts-otp${{ env.OTP_VERSION }}
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    # The mix release.burrito alias, not `mix release --overwrite`, because this
+    # app needs the assets digested and the app compiled before the release is
+    # assembled. config/prod.exs points cache_static_manifest at a file that
+    # `mix assets.deploy` writes, and a release without it cannot serve.
+    - name: Build binaries
+      run: MIX_ENV=prod mix release.burrito
+
+    - name: Smoke test the Linux binary
+      run: |
+        chmod +x burrito_out/*
+        ./test/smoke.sh burrito_out/bluos_now_playing_linux_x86_64
+
+    - name: Upload binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrito-binaries
+        path: burrito_out/*
+        retention-days: 7

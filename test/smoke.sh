@@ -35,6 +35,9 @@ host_target() {
 }
 
 HOST_TARGET=$(host_target)
+# The Windows binary is the only one with a suffix.
+HOST_BIN="burrito_out/bluos_now_playing_$HOST_TARGET"
+[ "$HOST_TARGET" = windows_x86_64 ] && HOST_BIN="$HOST_BIN.exe"
 
 report() {
   case $1 in
@@ -118,7 +121,7 @@ else
     *)
       report fail "the binary runs on this machine" \
         "this is a $HOST_TARGET machine, the binary is for another platform" \
-        "try: test/smoke.sh burrito_out/bluos_now_playing_$HOST_TARGET"
+        "try: test/smoke.sh $HOST_BIN"
       ;;
   esac
   echo "# failures" >&2
