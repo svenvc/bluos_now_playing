@@ -50,9 +50,14 @@ jobs:
     - name: Check the ERTS pin
       run: |
         installed="$(erl -noshell -eval 'io:format("~s", [erlang:system_info(otp_release)]), halt().')"
-        echo "building with OTP ${installed}"
-        echo "crypto app: $(ls "$(erl -noshell -eval 'io:format("~s", [code:root_dir()]), halt().')")/lib" | grep crypto)"
-        test "${installed%%.*}" = "${OTP_VERSION%%.*}"
+        root="$(erl -noshell -eval 'io:format("~s", [code:root_dir()]), halt().')"
+        crypto="$(ls "${root}/lib" | grep crypto || echo none)"
+        echo "building with OTP ${installed}, ERTS root ${root}"
+        echo "crypto app: ${crypto}"
+        if ! test "${installed%%.*}" = "${OTP_VERSION%%.*}"; then
+          echo "::error::asked for OTP ${OTP_VERSION}, but setup-beam installed ${installed}"
+          exit 1
+        fi
 
     # Burrito downloads a prebuilt ERTS and keeps it here. The artifact depends
     # on the ERTS version, not on this repository, so the key is that version. A
