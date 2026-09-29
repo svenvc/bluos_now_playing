@@ -101,6 +101,12 @@ kill_server() {
   if command -v pkill >/dev/null 2>&1; then
     pkill -9 -P "$SERVER_PID" 2>/dev/null || true
   fi
+  if command -v taskkill >/dev/null 2>&1; then
+    # The // keeps Git Bash from turning the switches into paths. /T takes the
+    # BEAM child with the launcher, which is what holding $WORK open would
+    # otherwise do on Windows.
+    taskkill //F //T //PID "$SERVER_PID" >/dev/null 2>&1 || true
+  fi
   i=0
   while kill -0 "$SERVER_PID" 2>/dev/null && [ "$i" -lt 20 ]; do
     i=$((i + 1))
@@ -114,7 +120,7 @@ kill_server() {
 cleanup() {
   kill_server
   cd / || true
-  rm -rf "$WORK"
+  rm -rf "$WORK" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -161,7 +167,11 @@ SERVER_PID=$!
 
 status=000
 i=0
-while [ "$i" -lt 60 ]; do
+# The first run unpacks the payload, which is tens of thousands of small files,
+# and on a fresh Windows runner every one of them goes past Defender. That is
+# minutes, not seconds, so the wait is generous and says how long it has been
+# waiting: a run that never comes up has to be told apart from a slow one.
+while [ "$i" -lt "${STARTUP_TRIES:-180}" ]; do
   if ! kill -0 "$SERVER_PID" 2>/dev/null; then
     status=dead
     break
@@ -169,6 +179,7 @@ while [ "$i" -lt 60 ]; do
   status=$(curl -s -o "$WORK/body" -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null) || status=000
   [ "$status" != 000 ] && break
   i=$((i + 1))
+  [ $((i % 30)) -eq 0 ] && echo "# still waiting for the endpoint: ${i}s"
   sleep 1
 done
 
@@ -188,17 +199,17 @@ expect "GET / answers 200 without PHX_SERVER" 200 "$status"
 # has to ship: the root layout with its digested assets, the LiveView itself,
 # and the click handler that toggles play-pause.
 for selector in 'data-phx-session' 'phx-click="toggle-play-pause"' '/assets/css/app-[^"]*\.css'; do
-  if grep -qE "$selector" "$WORK/body"; then
+  if [ -f "$WORK/body" ] && grep -qE "$selector" "$WORK/body"; then
     report ok "GET / renders $selector"
   else
-    report fail "GET / renders $selector" "body: $(head -c 300 "$WORK/body" | tr '\n' ' ')"
+    report fail "GET / renders $selector" "body: $(head -c 300 "$WORK/body" 2>/dev/null | tr '\n' ' ')"
   fi
 done
 
 # The digested manifest is what makes the CSS and JS load, and it only exists
 # if `mix assets.deploy` ran before `mix release`.
 for asset in /assets/css/app.css /assets/js/app.js; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT$asset")
+  code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT$asset") || code=000
   if [ "$code" = 200 ]; then
     report ok "GET $asset answers 200"
   else
@@ -210,11 +221,11 @@ done
 # are left out on purpose: they answer with the state of whatever player is on
 # the network, and LSDP discovery takes a second or two after boot, so they are
 # either slow or, on a machine without a player, empty.
-code=$(curl -s -o "$WORK/api" -w '%{http_code}' "http://127.0.0.1:$PORT/api")
-if [ "$code" = 200 ] && grep -q '/api/player-status-updates' "$WORK/api"; then
+code=$(curl -s -o "$WORK/api" -w '%{http_code}' "http://127.0.0.1:$PORT/api") || code=000
+if [ -f "$WORK/api" ] && [ "$code" = 200 ] && grep -q '/api/player-status-updates' "$WORK/api"; then
   report ok "GET /api answers 200"
 else
-  report fail "GET /api answers 200" "status: $code" "body: $(head -c 200 "$WORK/api" | tr '\n' ' ')"
+  report fail "GET /api answers 200" "status: $code" "body: $(head -c 200 "$WORK/api" 2>/dev/null | tr '\n' ' ')"
 fi
 
 if grep -qE '\[error\]|\[warning\].*Address already in use' "$WORK/log"; then
