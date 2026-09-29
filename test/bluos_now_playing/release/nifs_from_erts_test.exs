@@ -1,6 +1,8 @@
 defmodule BluOSNowPlaying.Release.NIFsFromERTSTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureIO
+
   alias BluOSNowPlaying.Release.NIFsFromERTS
 
   setup do
@@ -130,19 +132,28 @@ defmodule BluOSNowPlaying.Release.NIFsFromERTSTest do
   end
 
   describe "execute/1" do
+    # The step reports what it did through Burrito's logger, which is IO.puts
+    # and not Logger, so it is captured rather than silenced. It stays in the
+    # test because the report is how a build says which NIFs it took, and a
+    # NIF that silently stayed is the failure worth reading about.
     test "rewrites the work directory of a resolved ERTS", context do
       write_release(context.release)
       write_erts(context.erts)
 
       burrito_context = burrito_context(context.release, {:local_unpacked, path: context.erts})
 
-      assert %Burrito.Builder.Context{work_dir: work_dir} = NIFsFromERTS.execute(burrito_context)
+      {result, report} =
+        with_io(:stderr, fn -> NIFsFromERTS.execute(burrito_context) end)
+
+      assert %Burrito.Builder.Context{work_dir: work_dir} = result
       assert work_dir == context.release
 
       installed =
         Path.join([context.release, "lib", "crypto-5.8.3.3", "priv", "lib", "crypto.so"])
 
       assert File.read!(installed) == "bundled crypto"
+      assert report =~ "Installed NIF"
+      assert report =~ "crypto_callback"
     end
 
     test "does nothing when the ERTS is the one running the build", context do
