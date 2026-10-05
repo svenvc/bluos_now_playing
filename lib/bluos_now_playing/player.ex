@@ -142,17 +142,17 @@ defmodule BluOSNowPlaying.Player do
 
     case LSDP.try_parse_announce(bytes) do
       %{} = announce ->
-        Logger.debug("Player received LSDP announce #{inspect(announce)}")
+        Logger.notice("Player received LSDP announce #{inspect(announce)}")
 
         {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
       :error ->
         case LSDP.try_parse_query(bytes) do
           %{} = _query ->
-            Logger.notice("Player received LSDP query")
+            Logger.debug("Player received LSDP query")
 
           :error ->
-            Logger.notice("Player received unknown LSDP packet #{inspect(bytes)}")
+            Logger.debug("Player received unknown LSDP packet #{inspect(bytes)}")
         end
 
         {:noreply, state}
@@ -311,10 +311,11 @@ defmodule BluOSNowPlaying.Player do
 
   def maybe_invoke_task_discovery(state) do
     if state.player_core_state |> BluOSNowPlaying.state_valid?() do
-      Logger.info("Player core state is valid, did not start player discovery #{inspect(state.player_core_state)}")
+      Logger.info("Player core state is valid #{inspect(state.player_core_state)}")
 
       state
     else
+      Logger.info("Player starting discovery using LSDP")
       invoke_task_discovery(state)
     end
   end
