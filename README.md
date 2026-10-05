@@ -217,6 +217,15 @@ library, because the native libraries are linked into the payload rather than
 taken from the build machine. That is also why a binary can only run on the
 platform it was built for.
 
+To build only for one target, you can do:
+
+```bash
+$ rm -rf _build
+$ rm -rf burrito_out
+$ BURRITO_TARGET=macos_arm64 MIX_ENV=prod mix release.burrito
+$ ./burrito_out/bluos_now_playing_macos_arm64 maintenance uninstall
+```
+
 ## Learn more
 
 * Official website: https://www.phoenixframework.org/

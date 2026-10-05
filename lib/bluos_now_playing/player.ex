@@ -118,13 +118,13 @@ defmodule BluOSNowPlaying.Player do
   def handle_info({:update_status, new_status}, state) do
     new_state =
       if is_nil(new_status) do
-        Logger.info("Player :update_status no change")
+        Logger.debug("Player :update_status no change")
 
         state
       else
         minimal_status = new_status |> Map.take(@minimal_fields)
 
-        Logger.info("Player :update_status new_status=#{inspect(minimal_status)}")
+        Logger.debug("Player :update_status new_status=#{inspect(minimal_status)}")
 
         state |> update_status(new_status)
       end
@@ -142,7 +142,7 @@ defmodule BluOSNowPlaying.Player do
 
     case LSDP.try_parse_announce(bytes) do
       %{} = announce ->
-        Logger.info("Player received LSDP announce #{inspect(announce)}")
+        Logger.debug("Player received LSDP announce #{inspect(announce)}")
 
         {:noreply, state |> process_announce(announce), {:continue, :broadcast_update_status}}
 
@@ -164,7 +164,7 @@ defmodule BluOSNowPlaying.Player do
     Logger.debug("Player :broadcast_query")
 
     if state.player_core_state |> BluOSNowPlaying.state_valid?() do
-      Logger.info("Player core state is valid, not sending broadcast query")
+      Logger.debug("Player core state is valid, not sending broadcast query")
     else
       LSDP.broadcast_query(state.socket)
     end
@@ -178,12 +178,12 @@ defmodule BluOSNowPlaying.Player do
 
     LSDP.close(state.socket)
 
-    Logger.info("Player no longer listening for LSDP UDP broadcasts")
+    Logger.debug("Player no longer listening for LSDP UDP broadcasts")
 
     if state.player_core_state |> BluOSNowPlaying.state_valid?() do
-      Logger.info("Player core state is valid")
+      Logger.info("Player core state is valid #{inspect(state.player_core_state)}")
     else
-      Logger.info("Player discovery failed")
+      Logger.error("Player discovery failed")
     end
 
     {:noreply, state |> Map.delete(:socket)}
@@ -284,7 +284,7 @@ defmodule BluOSNowPlaying.Player do
   end
 
   def start_task_update_status_long(_, nil, _) do
-    Logger.info("Player delaying get_status_long by 10s")
+    Logger.debug("Player delaying get_status_long by 10s")
 
     Process.send_after(self(), {:update_status, nil}, 10_000)
   end
@@ -300,7 +300,7 @@ defmodule BluOSNowPlaying.Player do
         {:error, error} ->
           sleep = :rand.uniform(10)
 
-          Logger.info(
+          Logger.error(
             "Player get_status_long failed with #{inspect(error)} backing off for #{sleep}s"
           )
 
@@ -311,7 +311,7 @@ defmodule BluOSNowPlaying.Player do
 
   def maybe_invoke_task_discovery(state) do
     if state.player_core_state |> BluOSNowPlaying.state_valid?() do
-      Logger.info("Player core state is valid, did not start player discovery")
+      Logger.info("Player core state is valid, did not start player discovery #{inspect(state.player_core_state)}")
 
       state
     else
@@ -363,12 +363,12 @@ defmodule BluOSNowPlaying.Player do
         }
 
         if core_state == state.player_core_state do
-          Logger.info("Player :core_state unchanged")
+          Logger.debug("Player :core_state unchanged")
 
           state
           |> load_status()
         else
-          Logger.info("Player new :core_state #{inspect(core_state)}")
+          Logger.debug("Player new :core_state #{inspect(core_state)}")
 
           BluOSNowPlaying.save_state(core_state)
 
